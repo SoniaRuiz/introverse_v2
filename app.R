@@ -54,8 +54,7 @@ ui <- fluidPage(
                                                            "GTEx v8",
                                                            "GTEx v8 Age",
                                                            "ENCODE shRNA",
-                                                           "AD/Control",
-                                                           "Brainseq Squizophrenia/Control"),
+                                                           "Alzheimer's Disease/Control"),
                                                label = "Database",
                                                selected = "ENCODE shRNA")
                            ),

@@ -7,11 +7,10 @@ library(ggtranscript)
 
 database_folder <- base::file.path("database")
 
-database_equivalences <- data.frame(index = c(1,2,3,4,5),
-                                    key = c("gtex_v8", "gtex_v8_age", "encode_shrna", "ad_control", "brainseq"),
-                                    name = c("GTEx v8", "GTEx v8 Age", "ENCODE shRNA", "AD/Control", "Brainseq Squizophrenia/Control" ),
-                                    sqlite_file = c("splicing_1read.sqlite","splicing_1read_age.sqlite","ENCODE_SR_1read.sqlite","SRP100948_1read.sqlite","brainseq_1read.sqlite"),
-                                    project_types = c("body sites", "body sites","RBPs","Alzheimer's Disease/Control","Brainseq Squizophrenia/Control"))
+database_equivalences <- data.frame(index = c(1,2,3,4 ),
+                                    name = c("GTEx v8", "GTEx v8 Age", "ENCODE shRNA", "Alzheimer's Disease/Control" ),
+                                    sqlite_file = c("splicing_1read.sqlite","splicing_1read_age.sqlite","ENCODE_SR_1read.sqlite","SRP100948_1read.sqlite" ),
+                                    project_types = c("body sites", "body sites","RBPs","Alzheimer's Disease/Control" ))
                                                          
 
 
@@ -570,7 +569,7 @@ setup_ui_results_section <- function(query_results, v, i) {
     
     # 2. Get message of the number clusters and projects were the junction has been per database
     
-    if ( str_detect(string = local_query_results$database %>% unique(), pattern = "AD")) {
+    if ( str_detect(string = local_query_results$database %>% unique(), pattern = "Alzhe")) {
       text_n_clusters = paste0("Found in ", paste(local_query_results$cluster %>% unique(), collapse = " and "), " samples ")
       
     } else if ( str_detect(string = local_query_results$database %>% unique(), pattern = "Brainseq") ) {
