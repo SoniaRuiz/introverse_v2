@@ -77,6 +77,8 @@ RUN R -e 'install.packages(c("pbkrtest"), source="https://cran.rstudio.com/", de
 RUN R -e 'install.packages(c("ggpubr"), repos="http://cran.rstudio.com/", dependencies = T)'
 RUN R -e 'install.packages(c("ggrepel"), repos="http://cran.rstudio.com/", dependencies = T)'
 
+RUN R -e 'install.packages(c("shinybusy"), repos="http://cran.rstudio.com/", dependencies = T)'
+
 ####### COPY Rprofile #########
 
 COPY Rprofile.site /usr/lib/R/etc/

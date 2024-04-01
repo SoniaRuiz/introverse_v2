@@ -1,0 +1,14 @@
+/* Overflow corresponding to the dropdown elements in the menu */
+
+.shiny-split-layout>div { overflow:visible; };
+
+/* Size of the popups */
+
+.modal-lg {
+  height: 90vh;
+}
+
+.modal-body {
+  height: 70vh;
+}
+
