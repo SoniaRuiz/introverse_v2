@@ -119,12 +119,13 @@ set_UI_clinvar_information <- function(jxn_info) {
   ## Get clinvar info
   clinvar_span_tag <- NULL
   
-  if (jxn_info$clinvar %>% unique == 1) {
+  if (jxn_info %>% drop_na(clinvar) %>% pull(clinvar) %>% unique == 1) {
     
     #print(jxn_info$clinvar)
     #print(jxn_info$clinvar_locus)
     
-    if (any(jxn_info %>% names == "clinvar_locus")) {
+    if ( any(jxn_info %>% names == "clinvar_locus") ) {
+      
       clinvar_hits <- jxn_info %>% drop_na("clinvar_locus") %>% pull(clinvar_locus) %>% unique
       
       clinvar_span_tag <-div(p(strong("ClinVar variants:"), HTML('&nbsp;'),

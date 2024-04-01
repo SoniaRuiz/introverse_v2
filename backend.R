@@ -300,14 +300,14 @@ setup_UI_details_section <- function(query_results) {
   v[[i]] <- div(
     
     ## Set hidden info
-    p(id = "phastCons17_5ss", style = "display:none;", common_jxn_info$mean_phastCons17way5ss_100 %>% unique),
-    p(id = "phastCons17_3ss", style = "display:none;", common_jxn_info$mean_phastCons17way3ss_100 %>% unique),
-    p(id = "CDTS_5ss", style = "display:none;", common_jxn_info$mean_CDTS5ss_100 %>% unique),
-    p(id = "CDTS_3ss", style = "display:none;", common_jxn_info$mean_CDTS3ss_100 %>% unique),
-    p(id = "MES_5ss", style = "display:none;", common_jxn_info$mes5ss %>% unique),
-    p(id = "MES_3ss", style = "display:none;", common_jxn_info$mes3ss %>% unique),
-    p(id = "donor_sequence", style = "display:none;", common_jxn_info$donor_sequence %>% unique),
-    p(id = "acceptor_sequence", style = "display:none;", common_jxn_info$acceptor_sequence %>% unique),
+    p(id = "phastCons17_5ss", style = "display:none;", common_jxn_info %>% drop_na(mean_phastCons17way5ss_100) %>% pull(mean_phastCons17way5ss_100) %>% unique),
+    p(id = "phastCons17_3ss", style = "display:none;", common_jxn_info %>% drop_na(mean_phastCons17way3ss_100) %>% pull(mean_phastCons17way3ss_100) %>% unique),
+    p(id = "CDTS_5ss", style = "display:none;", common_jxn_info %>% drop_na(mean_CDTS5ss_100) %>% pull(mean_CDTS5ss_100) %>% unique),
+    p(id = "CDTS_3ss", style = "display:none;", common_jxn_info %>% drop_na(mean_CDTS3ss_100) %>% pull(mean_CDTS3ss_100) %>% unique),
+    p(id = "MES_5ss", style = "display:none;", common_jxn_info %>% drop_na(mes5ss) %>% pull(mes5ss) %>% unique),
+    p(id = "MES_3ss", style = "display:none;", common_jxn_info %>% drop_na(mes3ss) %>% pull(mes3ss) %>% unique),
+    p(id = "donor_sequence", style = "display:none;", common_jxn_info %>% drop_na(donor_sequence) %>% pull(donor_sequence) %>% unique),
+    p(id = "acceptor_sequence", style = "display:none;", common_jxn_info %>% drop_na(acceptor_sequence) %>% pull(acceptor_sequence) %>% unique),
     
     ## Set visible info
     h3("Junction Details"),

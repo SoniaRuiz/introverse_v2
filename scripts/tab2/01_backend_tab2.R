@@ -74,9 +74,12 @@ visualise_metadata_sample_clusters <- function(database_name) {
   data_to_plot <- df_metadata %>%
     filter(cluster != "") %>%
     mutate(cluster = ifelse(cluster == "case", "shRNA knockdown", cluster)) %>%
-    #distinct(sample_id, .keep_all = T) %>%
+    group_by(cluster) %>%
+    distinct(sample_id, .keep_all = T) %>%
+    ungroup() %>%
     dplyr::count(SRA_project, cluster) %>%
     arrange(n)
+  data_to_plot$n %>% sum
 
   ggplot(data = data_to_plot, 
          aes(x=reorder(fct_rev(SRA_project), -n, decreasing = T), y = n, fill = cluster)) + 

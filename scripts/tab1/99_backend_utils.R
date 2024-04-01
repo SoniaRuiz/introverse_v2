@@ -156,6 +156,10 @@ create_hg38_transcript_table <- function() {
 
 get_genomic_coordinates <- function(coordinates) {
   
+  if (str_detect(coordinates, pattern = ",")) {
+    coordinates <- str_split(string = coordinates, pattern = ",") %>% unlist
+  }
+  
   map_df(coordinates, function(coordinate) {
     
     # coordinate <- df_gene_splicing$novel_coordinates[1]

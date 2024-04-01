@@ -116,7 +116,7 @@ visualise_transcript <- function(junID,
 
 visualise_CLIP <- function(junID, transcript_ENS, geneName, junType) {
   
-  
+  #print(junID, " - ", transcript_ENS, " - ", geneName, " - ", junType)
   # junID <- "chr19:17621871-17623117:-"
   # geneName <- "UNC13A"
   # junID <- "chr1:154597977-154598401:-"
@@ -259,6 +259,12 @@ visualise_clinvar <- function(junID, clinvar_locus, database_name, junType, gene
   
   # clinvar_locus <- "chr1:154597977"
  
+  # junID = "chr1:155235308-155235680:-"
+  # clinvar_locus = c("chr1:155235101,chr1:155235193,chr1:155235679,chr1:155235680,chr1:155237579,chr1:155239615")
+  # database_name = "TCGA" 
+  # junType = "Novel Acceptor" 
+  # geneName = "GBA1"
+  
   message(junID, " ", clinvar_locus, " ", database_name, " ", junType, " ", geneName)
   
   ## Get junction color depending on the type of junction selected
@@ -274,7 +280,7 @@ visualise_clinvar <- function(junID, clinvar_locus, database_name, junType, gene
   junID_coordinates_gr <- get_genomic_coordinates(junID)%>% GenomicRanges::GRanges()
     
   ## Get clinvar coordinates
-  clinvar_locus_coordinates <- get_genomic_coordinates(clinvar_locus) 
+  clinvar_locus_coordinates <- get_genomic_coordinates(coordinates = clinvar_locus) 
   
   ## Get the transcript
   transcript_info <- get_transcript_to_plot(geneName)
