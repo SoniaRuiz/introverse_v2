@@ -1,4 +1,6 @@
 
+
+
 set_UI_distance_information <- function(jxn_info) {
   
   if ( str_detect(string = jxn_info$junID_type %>% unique(), pattern = "novel" ) ) {
@@ -14,14 +16,18 @@ set_UI_distance_information <- function(jxn_info) {
     
   } else {
     info_jxn_header  = c("Mis-spliced?","")
-    if ( any(jxn_info$ref_type %>% unique == "never" )) {
+    if ( all(jxn_info$ref_type %>% unique == "never" ) ) {
       info_jxn <- c("No (accurately spliced intron)","")
       text_color = c("blue", "green")
     } else {
-      if ( any(jxn_info$ref_type %>% unique == "both" )) {
+      if ( any(jxn_info$ref_type %>% unique == "both" ) ) {
         info_jxn <- c(paste0("Yes (both splice sites)."),"") 
       } else {
-        info_jxn <- c(paste0("Yes (",jxn_info$ref_type %>% unique, " splice sites)."),"")  
+        splice_sites <- jxn_info$ref_type %>% unique
+        if (any(splice_sites == "never")) {
+          splice_sites[which(splice_sites=="never")] <- "accurate"
+        }
+        info_jxn <- c(paste0("Yes (", paste(splice_sites, collapse = " and "), " splicing)."),"")  
       }
       text_color = c("blue", "orange")
     }
@@ -36,24 +42,85 @@ set_UI_distance_information <- function(jxn_info) {
 
 set_UI_transcript_information <- function(query_results) {
   
+  query_results_transcript <- query_results %>%
+    dplyr::select(transcript_ENS, MANE) %>% 
+    distinct(transcript_ENS, .keep_all = T) %>% 
+    arrange(desc(MANE), transcript_ENS) 
+  
+  transcript_id <- ""
+  MANE_text = ""
+  
+  if ( any(query_results_transcript$MANE == 1) ) {
+    transcript_id <- query_results_transcript %>%
+      filter(MANE == 1) %>%
+      pull(transcript_ENS)
+    MANE_text = " (MANE)"
+  } else {
+    transcript_id <- (query_results_transcript %>%
+      pull(transcript_ENS))[1]
+  }
+  
+  query_results_transcript <- query_results_transcript %>%
+    filter(transcript_ENS != transcript_id)
+  
+  
+  transcript_span_tag <- 
+    span(
+      tags$a(id = "atag_transcriptID",
+             href = "#", 
+      onclick = "var ID_jxn= $('#span_junID')[0].innerText; 
+      Shiny.setInputValue('junID_tab1', ID_jxn);
+      var ID_database= $('#h4_databaseID')[0].innerText; 
+      Shiny.setInputValue('databaseName_tab1', ID_database);
+      Shiny.setInputValue('transcriptENS_tab1', this.text );
+      var junType= $('#span_junType')[0].innerText; 
+      Shiny.setInputValue('junType_tab1', junType);
+      Shiny.setInputValue('transcriptMANE_tab1', 1);
+      $('#modalVisualiseTranscript_tab1').modal('show');", transcript_id), 
+      MANE_text)
+    
+  
+  transcript_span_tag <- span(transcript_span_tag, "and",
+                             span(tags$a(href = "#", 
+                             onclick = "var ID_jxn= $('#span_junID')[0].innerText; 
+                             Shiny.setInputValue('junID_tab1', ID_jxn);
+                             var ID_database= $('#h4_databaseID')[0].innerText; 
+                             Shiny.setInputValue('databaseName_tab1', ID_database);
+                             var transcript_ID = $('#atag_transcriptID')[0].innerText;
+                             Shiny.setInputValue('transcriptENS_tab1', transcript_ID );
+                             var junType= $('#span_junType')[0].innerText; 
+                             Shiny.setInputValue('junType_tab1', junType);
+                             var gene_Name= $('#span_geneName')[0].innerText; 
+                             Shiny.setInputValue('geneName_tab1', gene_Name);
+                             Shiny.setInputValue('transcriptMANE_tab1', 0);
+                             $('#modalVisualiseTranscript_tab1').modal('show');", query_results_transcript %>% filter(MANE == 0) %>% nrow(), " more transcripts"#, HTML('&nbsp;')
+                             )))
+  
+  return(transcript_span_tag)
+  
   
   ## Get transcript info
-  transcript_span_tag <- map(query_results$transcript_ENS %>% unique %>% sort(), function(transcript) {
-    ## TODO if transcript has exons, utr and cds
-    span(tags$a(href = "#", 
-                onclick = "var ID_jxn= $('#span_junID')[0].innerText; 
-                  Shiny.setInputValue('junID_tab1', ID_jxn);
-                  var ID_database= $('#h4_databaseID')[0].innerText; 
-                  Shiny.setInputValue('databaseName_tab1', ID_database);
-                  Shiny.setInputValue('transcriptENS_tab1', this.text );
-                  var junType= $('#span_junType')[0].innerText; 
-                  Shiny.setInputValue('junType_tab1', junType);
-                  $('#modalVisualiseTranscript_tab1').modal('show');",
-                transcript ), HTML('&nbsp;'))
-    
-    
-  })
-  return(transcript_span_tag)
+  # transcript_span_tag <- map(.x = split(query_results_transcript, 1:nrow(query_results_transcript)), 
+  #                            .f = function(row) {
+  #   
+  #   transcript_id <- row$transcript_ENS
+  #   
+  #   MANE_text <- ""
+  #   if (row$MANE) { MANE_text <- " (MANE)" }
+  #   
+  #   span(tags$a(href = "#", 
+  #               onclick = "var ID_jxn= $('#span_junID')[0].innerText; 
+  #                 Shiny.setInputValue('junID_tab1', ID_jxn);
+  #                 var ID_database= $('#h4_databaseID')[0].innerText; 
+  #                 Shiny.setInputValue('databaseName_tab1', ID_database);
+  #                 Shiny.setInputValue('transcriptENS_tab1', this.text );
+  #                 var junType= $('#span_junType')[0].innerText; 
+  #                 Shiny.setInputValue('junType_tab1', junType);
+  #                 $('#modalVisualiseTranscript_tab1').modal('show');",
+  #               transcript_id ), MANE_text, HTML('&nbsp;'))
+  #   
+  #   
+  # })
   
 }
 
@@ -67,9 +134,9 @@ set_UI_clip_information <- function(query_results) {
   database_path <- file.path("./database/clip_data.sqlite")
   con <- DBI::dbConnect(RSQLite::SQLite(), database_path)
   
-  if ( DBI::dbExistsTable(conn = con, name = query_results$gene_name %>% unique) ) {
+  if ( DBI::dbExistsTable(conn = con, name = (query_results$gene_name %>% unique )[1]) ) {
     
-    query <- paste0("SELECT * FROM '", query_results$gene_name %>% unique, "'")
+    query <- paste0("SELECT * FROM '", (query_results$gene_name %>% unique )[1], "'")
     db_clip_data_gr <- DBI::dbGetQuery(con, query) %>%
       GenomicRanges::GRanges()
     DBI::dbDisconnect(conn = con)
@@ -119,14 +186,18 @@ set_UI_clinvar_information <- function(jxn_info) {
   ## Get clinvar info
   clinvar_span_tag <- NULL
   
-  if (jxn_info %>% drop_na(clinvar) %>% pull(clinvar) %>% unique == 1) {
+  if ( (jxn_info %>% drop_na(clinvar) %>% pull(clinvar) %>% unique) == 1 ) {
     
     #print(jxn_info$clinvar)
     #print(jxn_info$clinvar_locus)
     
     if ( any(jxn_info %>% names == "clinvar_locus") ) {
       
-      clinvar_hits <- jxn_info %>% drop_na("clinvar_locus") %>% pull(clinvar_locus) %>% unique
+      clinvar_hits <- (jxn_info %>% drop_na("clinvar_locus") %>% pull(clinvar_locus) %>% unique) %>%
+        str_split(pattern = ",") %>%
+        unlist() %>%
+        unique() %>% 
+        sort()
       
       clinvar_span_tag <-div(p(strong("ClinVar variants:"), HTML('&nbsp;'),
                                span(tags$a(href = "#", 
@@ -140,12 +211,12 @@ set_UI_clinvar_information <- function(jxn_info) {
                                            var gene_Name= $('#span_geneName')[0].innerText; 
                                            Shiny.setInputValue('geneName_tab1', gene_Name);
                                            $('#modalVisualiseClinVar_tab1').modal('show');",
-                                           paste0(clinvar_hits)), HTML('&nbsp;'))))
+                                           paste(clinvar_hits,collapse = "; ")), HTML('&nbsp;'))))
     }
   }
   
   if ( is.null(clinvar_span_tag) ) {
-    clinvar_span_tag <- div(p(strong("ClinVar variants:"), HTML('&nbsp;'), "No ClinVar data."))
+    clinvar_span_tag <- div(p(strong("ClinVar variants:"), HTML('&nbsp;'), "No ClinVar data available for this junction."))
   }
   
   return(clinvar_span_tag)

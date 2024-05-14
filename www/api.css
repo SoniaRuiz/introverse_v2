@@ -5,10 +5,23 @@
 /* Size of the popups */
 
 .modal-lg {
-  height: 90vh;
+  height: 80vh;
 }
 
 .modal-body {
-  height: 70vh;
+  height: 75vh;
 }
+
+/* 'About' landing page center centered */
+
+.navbar-brand {
+  font-weight: bold;
+}
+  
+  
+div.dt-buttons {
+  clear: both !important;
+}
+
+
 

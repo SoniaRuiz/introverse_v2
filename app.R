@@ -10,30 +10,91 @@
 library(shiny)
 library(shinyjs)
 
-source("scripts/tab1/99_backend_utils.R")
-source("backend.R")
-source("scripts/tab1/01_backend_set_general_ui_data.R")
-source("scripts/tab1/02_backend_visualise_in_transcript.R")
-source("scripts/tab1/03_backend_download_data.R")
 
+# Common backend scripts
+
+source("scripts/99_backend_utils.R")
+source("scripts/00_backend.R")
+
+# Backend scripts Junction Search
+source("scripts/tab1/01_backend_tab1.R")
+source("scripts/tab1/02_backend_set_general_ui_data.R")
+source("scripts/tab1/03_backend_visualise_in_transcript.R")
+source("scripts/tab1/04_backend_download_data.R")
+
+
+# Backend scripts Gene Visualisation
 source("scripts/tab2/01_backend_tab2.R")
+
+# Backend scripts Metadata
+source("scripts/tab4/01_backend_tab4.R")
 
 
 
 # Define UI for application that draws a histogram
 ui <- navbarPage("IntroVerse V2",
+                 
                  inverse=TRUE,
                  id = "introverse_menu",
+                 selected = "home",
+                 
                  useShinyjs(),
                  
                  tags$head(
-                   tags$link(rel = "stylesheet", type = "text/css", href = "api.css")
+                   tags$link(rel = "stylesheet", type = "text/css", href = "api.css"),
+                   ## Google Analytics
+                   # Google tag (gtag.js)
+                   #tags$script(src = "https://www.googletagmanager.com/gtag/js?id=G-PD5SEMENW0", "async"),
+                   #tags$script(src = "google_analytics.js"),
+                   ## IGV
+                   tags$script(src = "https://cdn.jsdelivr.net/npm/igv@2.15.5/dist/igv.min.js"),
+                   tags$script(src = "igv.js")
                  ),
                  
-                 
-                 tabPanel("Basic Search",
+                 tabPanel(title = "Home",
+                          value = "home",
+                          icon = icon("house"),
                           
+                          id = "tabSwitch",
                           
+                          fluidPage(
+                            fluidRow(
+                              column(width = 3),
+                              column(width = 6, 
+                                     
+                                     #div(align = "center",),
+                                     div(
+                                       h1("About IntroVerse v2"),
+                                       p("IntroVerse is a web resource developed with the goal of harmonizing intron-level splicing information across a wide variety of 
+                                       large-scale human RNA-sequencing projects, making relevant summary data available for the wider scientific community."),
+                                       p("The second version of IntroVerse provided on this website includes splicing information across XXX annotated introns and XXX 5' and 3' alternative splicing events (GRCh38)
+                                       across XXXX independent human samples of diverse ancestries and cell lines, sequenced as part of various disease-specific and population RNA-seq studies."),
+                                       p("All data here originate from publicly-available datasets and it is released for the benefit of the scientific community, without restriction on use."),
+                                     
+                                       h2("Publications"),
+                                       p("Check out these publications to learn more about IntroVerse and how to use it for research interpretation."),
+                                       tags$ul(
+                                         tags$li(a(href="https://academic.oup.com/nar/article/51/D1/D167/6833238", target="_blank", 
+                                                   "IntroVerse: a comprehensive database of introns across human tissues, Nucleic Acids Research, Volume 51, Issue D1, 6 January 2023, Pages D167–D178")),
+                                         tags$li(a(href="https://www.biorxiv.org/content/10.1101/2023.03.29.534370v1.full", target="_blank", "Splicing accuracy varies across human introns, tissues and age"))
+                                         ),
+                                       h2("Database build"),
+                                       p("To build each of the XXX databases that the second version of IntroVerse offers, a carefully quality-control and split read/transcript process has been followed. 
+                                         The major steps are summarised in the image below:"),
+                                       img(src = "front_diagram.drawio.png"),
+                                       hr(),
+                                       br()
+                                     )
+                              ),
+                              column(width = 3)
+                            )
+                          )
+                 ),
+                 tabPanel(title = "Junction Search",
+                          
+                          value="basic_search",
+                          
+                          icon = icon("magnifying-glass"),
                           shinybusy:: use_busy_spinner(
                             spin_id = "main_spinner",
                             spin = "circle",
@@ -44,7 +105,7 @@ ui <- navbarPage("IntroVerse V2",
                           # Sidebar with a slider input for number of bins 
                           sidebarLayout(
                             sidebarPanel(
-                              width = 4,
+                              width = 3,
                               p(strong("Insert the coordinates of an annotated intron, alternative 5' or alternative 3' splicing event of interest (hg38):")),
                               shiny::splitLayout(id="chr_strand_tab1",
                                                  # shiny::textInput(inputId = "jxn_coordinates_tab1",
@@ -52,49 +113,73 @@ ui <- navbarPage("IntroVerse V2",
                                                  #                  value = "chr16:86478133-86508654:-")
                                                  shiny::selectInput(inputId = "chr_tab1",
                                                                     label = "Chr",
-                                                                    selected = 1,
+                                                                    selected = 19,
                                                                     choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,"X","Y"),
                                                                     multiple = F),
-                                                 numericInput(inputId = "start_tab1",
-                                                              label = "Start",
-                                                              value = 154597977),
-                                                 numericInput(inputId = "end_tab1",
-                                                              label = "End",
-                                                              value = 154598401),
                                                  shiny::selectInput(inputId = "strand_tab1",
                                                                     label = "Strand",
                                                                     choices = c("+", "-"),
-                                                                    selected = "-",
+                                                                    selected = "+",
                                                                     multiple = F)
-                              #),
-                              #shiny::splitLayout(id="start_end_tab1",
+                              ),
+                              shiny::splitLayout(id="start_end_tab1",
                                                  
+                                                 numericInput(inputId = "start_tab1",
+                                                              label = "Start",
+                                                              value = 4491836),
+                                                 numericInput(inputId = "end_tab1",
+                                                              label = "End",
+                                                              value = 4492014)                   
                               ),
                               hr(),
-                              p(strong("Select the database to retrieve splicing information about the splicing event indicated above.")),
+                              #shiny::splitLayout(id="splitLayout_nearby_tab1",
+                              shiny::textInput(inputId = "database_text_nearby_tab1",
+                                               label = "Expand the search region around the starting and ending positions indicated above (in bp):",
+                                               placeholder = "Number of base-pairs",
+                                               value = 0),
+                              shiny::sliderInput(inputId = "database_nearby_tab1", 
+                                                 label = NULL, 
+                                                 step = 1,
+                                                 value = 0, 
+                                                 min = 0, 
+                                                 max = 100000 ),
+                                                 
+                              #),
+                              hr(),
+                              p(strong("Select the database and sample group to perform the query.")),
                               
-                              shiny::splitLayout(id="database_selection_all_tab1",
-                                                 shiny::radioButtons(inputId = "database_select",
-                                                                     choices = c("All",
-                                                                                 "TCGA",
-                                                                                 "GTEx v8",
-                                                                                 "GTEx v8 Age",
-                                                                                 "ENCODE shRNA",
-                                                                                 "Alzheimer's Disease/Control",
-                                                                                 "Parkinson's Disease/Control",
-                                                                                 "LRRK2 G2019S mutation"),
-                                                                     label = "Database:",
-                                                                     selected = "TCGA")
-                              ),
+                                                 shiny::selectInput(inputId = "database_selection_tab1",
+                                                                    label = "Database",
+                                                                    selected = "tcga",
+                                                                    choices = c("All" = "all",
+                                                                                "The Cancer Genome Atlas Program (TCGA)" = "tcga",
+                                                                                "The Genotype-Tissue Expression (GTEx) v8" = "gtex",
+                                                                                #"AD/Control" = "ad",
+                                                                                #"PD/Control" = "pd",
+                                                                                "ENCODE shRNA" = "encode_sh"),
+                                                                    multiple = F),
+                              
+                                                shiny::selectInput(inputId = "database_project_selection_tab1",
+                                                                   label = "Sample experiment",
+                                                                   choices = NULL,
+                                                                   multiple = F),
+                              
+                                                 shiny::selectInput(inputId = "database_sample_type_selection_tab1",
+                                                                    label = "Sample group",
+                                                                    choices = NULL,
+                                                                    multiple = F),
+                   
                               hr(),
                               actionButton(inputId = "acceptButton_tab1", class = "btn-primary", label = "Accept"),
                               
                               ## Hidden inputs for the transcript visualisation
+                              shinyjs::hidden(shiny::textInput(inputId = "nearby_helper_tab1", label = "")),
                               shinyjs::hidden(
                                 p(id = "junID_tab1", ""),
                                 p(id = "geneName_tab1", ""),
                                 p(id = "junType_tab1", ""),
                                 p(id = "transcriptENS_tab1", ""),
+                                p(id = "transcriptMANE_tab1", ""),
                                 p(id = "databaseName_tab1", ""),
                                 p(id = "clinvarlocus_tab1", ""),
                                 p(id = "phastCons17_5ss_tab1",""),
@@ -111,13 +196,14 @@ ui <- navbarPage("IntroVerse V2",
                             
                             # Show the output
                             mainPanel(
-                              width = 8,
+                              width = 9,
+                              
                               shiny::uiOutput(outputId = "queryResults"), 
+                              shiny::uiOutput(outputId = "queryNearByResults"),
                               tabsetPanel(
                                 id = "switcher",
                                 type = "tabs" 
                               ),
-                              
                               
                               shinyBS::bsModal(id = "modalVisualiseTranscript_tab1", 
                                                title = "Visualise the splicing event within the selected transcript",
@@ -134,7 +220,7 @@ ui <- navbarPage("IntroVerse V2",
                                                plotOutput("modalVisualiseTranscript_tab1", width = "auto", height = "70vh")),
                               
                               shinyBS::bsModal(id = "modalVisualiseCLIP_tab1", 
-                                               title = "RBP-RNA interactions supported by CLIP-seq data",
+                                               title = "Visualising RBP-RNA regulatory data suported by at least 10 CLIP-seq experiments.",
                                                
                                                trigger = NULL,
                                                size = "large",
@@ -147,9 +233,8 @@ ui <- navbarPage("IntroVerse V2",
                                                ),
                                                
                                                
-                                               plotOutput("modalVisualiseCLIP_tab1", width = "auto", height = "70vh"),
-                                               footer = downloadButton(outputId = 'downloadCLIPData', label = 'Download all regulatory data',
-                                                                       class = "btn-primary")
+                                               plotOutput("modalVisualiseCLIP_tab1", width = "auto", height = "75vh"),
+                                               footer = downloadButton(outputId = 'downloadCLIPData', label = 'Download all regulatory data', class = "btn-primary")
                                                ),
                               
                               shinyBS::bsModal(id = "modalVisualiseClinVar_tab1", 
@@ -175,8 +260,141 @@ ui <- navbarPage("IntroVerse V2",
                             )
                           )
                           ),
-                 tabPanel("Datasets",
+                 tabPanel(title = "Gene Visualisation",
+                          value = "gene_search",
+                          icon = icon("dna"),
                           
+                          shinybusy:: use_busy_spinner(
+                            spin_id = "tab2_spinner",
+                            spin = "circle",
+                            color = "#0dc5c1",
+                            position = "full-page"
+                          ),
+                          
+                          
+                          sidebarLayout(
+                            sidebarPanel(
+                              width = 3,
+                              p(strong("Please, select the database and preferred visualisation mode to represent alternative 3' and 5' splicing events:")),
+                              
+                              shiny::selectInput(inputId = "database_tab2",
+                                                 label = "Database",
+                                                 selected = "tcga",
+                                                 choices = c("All" = "all",
+                                                             "The Cancer Genome Atlas Program (TCGA)" = "tcga",
+                                                             "The Genotype-Tissue Expression (GTEx) v8" = "gtex",
+                                                             #"AD/Control" = "ad",
+                                                             #"PD/Control" = "pd",
+                                                             "ENCODE shRNA" = "encode_sh"),
+                                                 selectize=T,
+                                                 multiple = F),
+                              
+                              shiny::selectInput(inputId = "database_project_tab2",
+                                                 label = "Sample experiment",
+                                                 choices = NULL,
+                                                 multiple = F, selectize=T),
+                              
+                              shiny::selectInput(inputId = "database_sample_type_tab2",
+                                                 label = "Sample group",
+                                                 choices = NULL,
+                                                 multiple = F),
+                              shiny::selectInput(inputId = "splicing_event_type_tab2",
+                                                 label = "Splicing event type:",
+                                                 choices = c("All junction types" = "all",
+                                                             "Annotated intron" = "intron", 
+                                                             "Novel acceptor (alternative 3'ss)" = "novel_acceptor",
+                                                             "Novel donor (alternative 5'ss)" = "novel_donor"),
+                                                 selected = "all",
+                                                 multiple = F),
+                              shiny::selectInput(inputId = "visualise_mode_tab2",
+                                                 label = "Visualisation mode:",
+                                                 choices = NULL,
+                                                 selected = "all",
+                                                 multiple = F),
+                              hr(),
+                              p(strong("Please, select the gene and transcript structure of interest to visualise splicing events:")),
+                              selectizeInput(inputId = "gene_tab2",
+                                             label = "Gene:",
+                                             choices = NULL,
+                                             multiple = F,
+                                             options = list(
+                                               placeholder = "Select gene",
+                                               options = list(create = FALSE)),
+                                             selected = NULL),
+                              
+                              selectizeInput(inputId = "transcript_tab2",
+                                             label = "Transcript:",
+                                             choices = NULL,
+                                             multiple = F,
+                                             options = list(
+                                               placeholder = "Select transcript",
+                                               options = list(create = FALSE)),
+                                             selected = NULL),
+                              
+                              actionButton(inputId = "acceptButton_tab2", class = "btn-primary", label = "Visualise Splicing")
+                            ),
+                            mainPanel(
+                              width = 9,
+                              shiny::uiOutput(outputId = "geneQueryResults")
+                              )
+                          )
+                          ),
+                 tabPanel(title = "IGV Browser",
+                          value = "igv_browser",
+                          icon = icon("window-maximize"),
+                          fluidPage(
+                            fluidRow(
+                              column(width = 12, 
+                                     h2("BigWig visualisation"), br(),
+                                     p("This section allows the visualisation of BigWig files. Please, select the sample experiment of interest. To establish comparisons among sample groups, please select 'All' in the sample type dropbox. Given the non-disease nature of the GTEx samples, and the large amount of samples provided by tissue (in some cases >700 samples), a maximum of 50 samples per tissue have been selected for visualisation purposes. To facilitate comparisons across samples groups in the TGCA dataset, only matching control and disease samples from the same individual have been selected.")
+                              ),
+                              column(width = 12, 
+                                     shiny::splitLayout(id="igv_browser_dataset_selection",
+                                                        
+                                                        shiny::selectInput(inputId = "igv_browser_database_selection_tab1",
+                                                                           label = "Database",
+                                                                           selected = "tcga",
+                                                                           choices = c("The Cancer Genome Atlas Program (TCGA)" = "tcga",
+                                                                                       "The Genotype-Tissue Expression (GTEx) v8" = "gtex",
+                                                                                       #"AD/Control" = "ad",
+                                                                                       #"PD/Control" = "pd",
+                                                                                       "ENCODE shRNA" = "encode_sh"),
+                                                                           width = '100%',
+                                                                           multiple = F),
+                                                        shiny::selectInput(inputId = "igv_browser_database_project_selection_tab1",
+                                                                           label = "Sample cluster",
+                                                                           choices = NULL,
+                                                                           width = '100%',
+                                                                           multiple = F),
+                                                        shiny::selectInput(inputId = "igv_browser_database_sample_type_selection_tab1",
+                                                                           label = "Sample group",
+                                                                           choices = NULL,
+                                                                           width = '100%',
+                                                                           multiple = F),
+                                                        br()
+                                     ),
+                                     shiny::splitLayout(id="igv_browser_button",
+                                                        actionButton(inputId = "igv_browser_acceptButton_tab1", class = "btn-primary", 
+                                                                     
+                                                                     label = "Visualise BigWig"),
+                                                        shinyjs::hidden(
+                                                          p(id = "bigwig_urls", value=""),
+                                                          p(id = "bigwig_categories", value=""),
+                                                          p(id = "bigwig_types", value="")
+                                                        ))
+                              )
+                            ),
+                            fluidRow(
+                              column(width = 12, 
+                                     hr(),
+                                     div(id = "igv-div", align = "center")
+                                     
+                              )
+                            )
+                          )
+                 ),
+                 tabPanel("Datasets",
+                          icon = icon("database"),
                           shinybusy:: use_busy_spinner(
                             spin_id = "main_spinner_tab2",
                             spin = "circle",
@@ -185,86 +403,42 @@ ui <- navbarPage("IntroVerse V2",
                           ),
                           
                           fluidPage(
+                            
                             navlistPanel(
                               id = "tab_panel_DB_info",
-                              "Databases",
+                              widths = c(3, 9),
+                              "Bulk Short-Read RNA-seq:",
+                              
                               tabPanel(
                                 title = "TCGA",
                                 fluidRow(
-                                  column(9,
+                                  column(width = 12,
                                          h1("TCGA"),
                                          h3(strong("The Cancer Genome Atlas Program")),
                                          p("The Cancer Genome Atlas (TCGA) is a landmark cancer genomics program, molecularly characterized over 20,000 primary cancer and matched normal samples spanning 33 cancer types"),
-                                         plotOutput("tcga_metadata_output_tab2", width = "auto", height = "50vh"),
+                                         plotOutput("tcga_metadata_output_tab2", width = "auto", height = "60vh"),
                                          
                                          uiOutput(outputId = "tcga_cancer_types_output_tab2")
                                   ))),
                               tabPanel(
                                 title = "GTEx v8",
                                 fluidRow(
-                                  column(9,
+                                  column(width = 12,
                                          h1("GTEx v8"),
                                          h3(strong("Genotype Tissue Expression Project v8")),
                                          p("GTEx project collected samples from up to 54 non-diseased tissue sites across nearly 1,000 deceased individuals. Gene expression of each tissue was assessed by RNA sequencing (bulk RNA-seq)."),
-                                         plotOutput("gtex_metadata_output_tab2", width = "auto", height = "50vh")
-                                  ))),
-                              tabPanel(
-                                title = "GTEx v8 Age",
-                                fluidRow(
-                                  column(9,
-                                         h1("GTEx v8 Age"),
-                                         h3(strong("Genotype Tissue Expression Project v8. ")),
-                                         p("GTEx samples have been clustered by age in three age supergroups: '20-39', '40-59' and '60-79' years-old. "),
-                                         plotOutput("gtex_age_metadata_output_tab2", width = "auto", height = "50vh")
+                                         plotOutput("gtex_metadata_output_tab2", width = "auto", height = "60vh")
                                   ))),
                               tabPanel(
                                 title = "ENCODE shRNA",
+                                
                                 fluidRow(
-                                  column(9,
+                                  column(width = 12,
                                          h1("ENCODE shRNA"),
-                                         h3(strong("shRNA knockdown followed by RNA-seq (shRNA RNA-seq) experiments")),
-                                         p("RNA-seq on K562 and HepG2 cells treated with an shRNA knockdown against different RNA-Binding Proteins (RBPs) as well as against no target and followed by RNA-seq (ENCODE platform)."),
-                                         plotOutput("ENCODE_metadata_output_tab2", width = "auto", height = "50vh")
-                                  ))),
-                              tabPanel(
-                                title = "Alzheimer's Disease/Control",
-                                fluidRow(
-                                  column(9,
-                                         h1("Alzheimer's Disease/Control"),
-                                         h3(strong("NCBI: "),"SRP10094"),
-                                         p("Bulk RNA-sequencing was purified from fusiform gyrus tissue sections of autopsy-confirmed Alzheimer's cases and neurologically normal age-matched controls."),
-                                         plotOutput("SRP100948_metadata_output_tab2", width = "auto", height = "50vh")
-                                  ))),
-                              tabPanel(
-                                title = "Parkinson's Disease/Control",
-                                fluidRow(
-                                  column(9,
-                                         h1("Parkinson's Disease/Control"),
-                                         h3(strong("NCBI: "),"SRP058181"),
-                                         p("Bulk RNA-sequencing expression of human post-mortem BA9 brain tissue for Parkinson Disease and neurologically normal individuals."),
-                                         plotOutput("SRP058181_metadata_output_tab2", width = "auto", height = "50vh")
-                                  ))),
-                              tabPanel(
-                                title = "LRRK2 G2019S mutation",
-                                fluidRow(
-                                  column(9,
-                                         h1("LRRK2 G2019S mutation"),
-                                         h3(strong("NCBI:"),"SRP151040"),
-                                         #p(strong("Abstract")),
-                                         p("Short-read RNA-sequencing of induced pluripotent stem cells (iPSC) and iPSC-derived astrocytes from control and Parkinson's disease patients carrying LRRK2 G2019S point mutation"),
-                                         #p(strong("Overall study design"), "Human iPSC-derived astrocyte identity was obtained by comparing human iPSC from the same control and Parkinson's disease LRRK2 G2019S patients and human commercial astrocytes. mRNA profiles were generated by deep sequencing using Illumina HiSeq2000"),
-                                         #p(strong("Original study goal: "), 
-                                        #   "The goal of this study is to compare the NGS-derived from transcriptome profiling (RNA-seq) of human iPSC, human iPSC-derived astrocytes from control and 
-                                        #   Parkinson's disease LRRK2 G2019S, and human commercial astrocytes to gain insight into the identity of human iPSC-derived astrocytes in vitro during the 
-                                        #   differentiation process."),
-                                         #p("Total RNA was assayed for quantity and quality using Qubit RNA HS Assay (Life Technologies) and RNA 6000 Nano Assay on a Bioanalyzer 2100. 
-                                         #The RNASeq libraries were prepared from total RNA using the TruSeq®Stranded mRNA LT Sample Prep Kit (Illumina Inc., Rev.E, October 2013).  
-                                         #Libraries were sequenced on HiSeq2000 (Illumina, Inc) in paired-end mode with a read length of 2x76bp using TruSeq SBS Kit v4. 
-                                         #Over 30 million paired-end reads for each sample in a fraction of a sequencing v4 flow cell lane, following the manufacturer's protocol."), 
-                                         #p(strong("Study Conclusion:"), "These results suggest that iPSC-derived astrocytes resemble human commercial astrocytes validating the differentiating protocol used."),
-                                           
-                                         plotOutput("SRP151040_metadata_output_tab2", width = "auto", height = "50vh")
-                                  )))
+                                         h3(strong("shRNA knockdown followed by RNA-seq and control experiments")),
+                                         p("Bulk short-read RNA-seq on K562 and HepG2 cell lines treated with an shRNA knockdown against different RNA-Binding Proteins (RBPs) as well as against no target gene (controls). BAM files were downloaded from the ENCODE platform."),
+                                         plotOutput("ENCODE_metadata_output_tab2", width = "auto", height = "60vh")
+                                  )))#
                               
                             ))
                  )
@@ -277,7 +451,219 @@ server <- function(input, output, session) {
   #updateSelectizeInput(session, 'encode_table_list', choices = encode_table_list, server = TRUE, selected = encode_table_list[1])
   
   
-  shiny::updateTabsetPanel(inputId = "introverse_menu", selected = "Basic Search")
+  # shiny::updateTabsetPanel(inputId = "introverse_menu", selected = "Basic Search")
+  
+  
+  ##############################################################################
+  ## OBSERVERS - JUNCTION SEARCH TAB
+  ##############################################################################
+ 
+  
+  # Manage the selection of the database and project dropdowns
+  observeEvent(list(input$database_selection_tab1), {
+                      
+    ## Database Selection - we update the dropdown "sample cluster selection"
+    if (input$database_selection_tab1 == "all") {
+      
+      ## Tab Basic Search
+      updateSelectInput(session, inputId = "database_project_selection_tab1", choices = c("All" = "all"))
+      updateSelectInput(session, inputId = "database_sample_type_selection_tab1", choices = c("All" = "all"))
+      
+      shinyjs::disable(id = "database_project_selection_tab1")
+      shinyjs::disable(id = "database_sample_type_selection_tab1")
+      
+    
+    } else {
+      
+      ## Tab Basic Search
+      sample_project_choices <- set_database_project_dropdown(database_key = input$database_selection_tab1)
+      updateSelectInput(session, inputId = "database_project_selection_tab1", choices = sample_project_choices, selected = sample_project_choices[2])
+      shinyjs::enable(id = "database_project_selection_tab1")
+ 
+    }
+    
+  }, ignoreInit = F)
+  
+  # Manage the selection of the project and sample cluster dropdowns
+  observeEvent(input$database_project_selection_tab1, {
+  
+    message(input$database_selection_tab1, input$database_project_selection_tab1 )
+
+    ## Sample Cluster Selection - we update the dropdown "sample type selection"
+    if ( input$database_selection_tab1 == "all" || input$database_project_selection_tab1 == "all" ) {
+
+      updateSelectInput(session, inputId = "database_sample_type_selection_tab1", choices = c("All" = "all"))
+      shinyjs::disable(id = "database_sample_type_selection_tab1")
+
+    } else {
+
+      ## Basic Search
+      sample_cluster_choices <- set_database_sample_type_dropdown(database_key = input$database_selection_tab1, 
+                                                                  project_id = input$database_project_selection_tab1)
+      if (sample_cluster_choices %>% length() == 1) {
+        updateSelectInput(session, inputId = "database_sample_type_selection_tab1", choices = sample_cluster_choices)
+      } else {
+        updateSelectInput(session, inputId = "database_sample_type_selection_tab1", choices = sample_cluster_choices,
+                          selected = sample_cluster_choices[2])
+      }
+      shinyjs::enable(id = "database_sample_type_selection_tab1")
+      
+    }
+
+  }, ignoreInit = T)
+  
+  
+  # When the value of any of the following inputs is changed, we update them visually
+  # Start position
+  observeEvent(input$start_tab1,{
+    session$sendInputMessage("start_tab1", list(value=input$start_tab1))
+  })
+  # End position
+  observeEvent(input$end_tab1,{
+    session$sendInputMessage("end_tab1", list(value=input$end_tab1))
+  })
+  # Genomic region slider
+  observeEvent(input$database_nearby_tab1,{
+    session$sendInputMessage("database_nearby_tab1", list(value=input$database_nearby_tab1))
+  })
+  observeEvent(input$database_text_nearby_tab1, {
+    updateSliderInput(session, inputId = "database_nearby_tab1", 
+                      value = input$database_text_nearby_tab1)
+  })
+  observeEvent(input$nearby_helper_tab1,{
+    session$sendInputMessage("nearby_helper_tab1", list(value=input$nearby_helper_tab1))
+  })
+  
+  
+  ##############################################################################
+  ## OBSERVERS - GENE VISUALISATION TAB
+  ##############################################################################
+  
+  
+  observeEvent(input$database_tab2, {
+
+    ## 1. The list of genes available  may change depending on the database selected
+    chosen_gene_list <- gene_list[database_equivalences %>% filter(key == input$database_tab2) %>% pull(sqlite_file)][[1]]
+    genes_choices <- c(chosen_gene_list$gene_name, chosen_gene_list$gene_id) %>% as.list()
+    names(genes_choices) <- c(chosen_gene_list$gene_name, chosen_gene_list$gene_id) %>% as.list()
+    updateSelectizeInput(session, 'gene_tab2', choices = genes_choices, server = TRUE)  
+    
+    
+    
+    ## 2. Update the list of projects available depending on the database selected
+    sample_project_choices <- set_database_project_dropdown(database_key = input$database_tab2)
+    if (sample_project_choices[1] == "All") {
+      sample_project_choices <- sample_project_choices[-1]
+    }
+    updateSelectInput(session, inputId = "database_project_tab2", choices = sample_project_choices, selected = sample_project_choices[2])
+
+  }, ignoreInit = F)
+  
+  observeEvent(input$database_project_tab2, {
+    
+    sample_cluster_choices <- set_database_sample_type_dropdown(database_key = input$database_tab2, project_id = input$database_project_tab2)
+    
+    if ( sample_cluster_choices %>% length() == 1) {
+      updateSelectInput(session, inputId = "database_sample_type_tab2", choices = sample_cluster_choices)
+      updateSelectInput(session, inputId = "visualise_mode_tab2", choices = c("All splicing events" = "all"))
+      
+    } else {
+      updateSelectInput(session, inputId = "database_sample_type_tab2", choices = sample_cluster_choices[-1], selected = sample_cluster_choices[2])
+      updateSelectInput(session, inputId = "visualise_mode_tab2", choices = c("All splicing events" = "all",
+                                                                              "Unique splicing events to this sample group" = "compare"))
+    }
+
+  }, ignoreInit = T)
+  
+  observeEvent(input$gene_tab2, {
+    
+    shinyjs::disable(id = "acceptButton_tab2")
+    if (input$database_tab2 == "tcga") {
+      chosen_conn <- conn_list$TCGA_1read_subsampleFALSE.sqlite
+      
+    } else if (input$database_tab2 == "gtex") {
+      chosen_conn <- conn_list$splicing_1read.sqlite  
+      
+    } else if (input$database_tab2 == "encode_sh") {
+      chosen_conn <- conn_list$ENCODE_SR_1read.sqlite  
+      
+    }
+    transcripts_gene = get_database_transcripts(con = chosen_conn, gene_name = input$gene_tab2)
+    
+    transcript_choices <- c(transcripts_gene$transcript_id) %>% as.list()
+    names(transcript_choices) <- c(transcripts_gene$transcript_label) %>% as.list()
+    updateSelectizeInput(session, 'transcript_tab2', choices = transcript_choices, server = TRUE)  
+    shinyjs::enable(id = "acceptButton_tab2")
+  }, ignoreInit = T)
+  
+  
+  ##############################################################################
+  ## OBSERVERS - IGV BROWSER
+  ##############################################################################
+  
+  
+  # Manage the selection of the database and project dropdowns
+  observeEvent(list(input$igv_browser_database_selection_tab1), {
+    
+    sample_project_choices <- set_database_project_dropdown(database_key = input$igv_browser_database_selection_tab1)
+    if (sample_project_choices[1] == "All") {
+      sample_project_choices <- sample_project_choices[-1]
+    }
+    ## Tab IGV Browser
+    updateSelectInput(session, 
+                      inputId = "igv_browser_database_project_selection_tab1", 
+                      choices = sample_project_choices, 
+                      selected = sample_project_choices[2])
+    
+    shinyjs::enable(id = "igv_browser_database_project_selection_tab1")
+    
+  }, ignoreInit = F)
+  
+  # Manage the selection of the project and sample cluster dropdowns
+  observeEvent(list(input$igv_browser_database_project_selection_tab1), {
+    
+    sample_cluster_choices <- set_database_sample_type_dropdown(database_key = input$igv_browser_database_selection_tab1, 
+                                                                project_id = input$igv_browser_database_project_selection_tab1)
+    
+    ## IGV Browser
+    if (sample_cluster_choices %>% length() == 1) {
+      updateSelectInput(session, inputId = "igv_browser_database_sample_type_selection_tab1", choices = sample_cluster_choices)
+    } else {
+      updateSelectInput(session, inputId = "igv_browser_database_sample_type_selection_tab1", choices = sample_cluster_choices,
+                        selected = sample_cluster_choices[1])
+    }
+    shinyjs::enable(id = "igv_browser_database_sample_type_selection_tab1")
+    
+  }, ignoreInit = T)
+  
+  # Manage the selection of the correct bigWig files
+  observeEvent(input$igv_browser_acceptButton_tab1, {
+    
+    ## Load data
+    bigWig <- readRDS(file = file.path(here::here(), "dependencies/bigWig_URLs.rds")) %>%
+      filter(project == input$igv_browser_database_project_selection_tab1 )
+    
+    
+    ## Retrieve the BigWig URLs
+    if (input$igv_browser_database_sample_type_selection_tab1 != "all") {
+      bigWig <- bigWig %>%
+        filter(cluster == input$igv_browser_database_sample_type_selection_tab1 %>% str_to_title())
+      print(bigWig %>% head())
+    }
+
+    shinyjs::html(id = "bigwig_categories", html = paste(bigWig$cluster, collapse = ";"))
+    tryCatch(
+      eval(shinyjs::html(id = "bigwig_urls", html = paste(bigWig$BigWigURL, collapse = ";"))),
+      error = function(e) {
+        showNotification(paste("Error in 'bigwig_urls': ", e$message), type = "error")
+      }
+    )
+    shinyjs::html(id = "bigwig_types", html = paste(bigWig$BigWig_type, collapse = ";"))
+  
+    shinyjs::runjs(code = "loadBigWigFiles($('#bigwig_categories').html(), $('#bigwig_urls').html(), $('#bigwig_types').html());")
+    
+  }, ignoreInit = T)
+  
   
   ##############################################################################
   ## MODAL POP-UP 
@@ -286,10 +672,19 @@ server <- function(input, output, session) {
   ## TRANSCRIPT VISUALISATION ----------------------------------------------------
   
   visualiseTranscriptPlot <- function() {
-    transcript_plot <- visualise_transcript(junID = str_replace_all(string = input$junID_tab1, pattern = "%20", replacement = " "),
-                                            transcript_ENS = str_replace_all(string = input$transcriptENS_tab1, pattern = "%20", replacement = " "),
-                                            database_name = str_replace_all(string = input$databaseName_tab1, pattern = "%20", replacement = " "),
-                                            junType = str_replace_all(string = input$junType_tab1, pattern = "%20", replacement = " "))
+    if (input$transcriptMANE_tab1) {
+      transcript_plot <- visualise_transcript(junID = str_replace_all(string = input$junID_tab1, pattern = "%20", replacement = " "),
+                                              transcript_ENS = str_replace_all(string = input$transcriptENS_tab1, pattern = "%20", replacement = " "),
+                                              database_name = str_replace_all(string = input$databaseName_tab1, pattern = "%20", replacement = " "),
+                                              junType = str_replace_all(string = input$junType_tab1, pattern = "%20", replacement = " "))
+    } else {
+      transcript_plot <- visualise_multiple_transcripts(junID = str_replace_all(string = input$junID_tab1, pattern = "%20", replacement = " "),
+                                                        transcript_ENS = str_replace_all(string = input$transcriptENS_tab1, pattern = "%20", replacement = " "),
+                                                        geneName = str_replace_all(string = input$geneName_tab1, pattern = "%20", replacement = " "),
+                                                        database_name = str_replace_all(string = input$databaseName_tab1, pattern = "%20", replacement = " "),
+                                                        junType = str_replace_all(string = input$junType_tab1, pattern = "%20", replacement = " "))
+    }
+
     shinybusy::hide_spinner(spin_id = "modal_spinner")
     return(transcript_plot)
   }
@@ -352,23 +747,23 @@ server <- function(input, output, session) {
                                     "Value" = c(input$phastCons17_5ss_tab1,input$phastCons17_3ss_tab1,input$CDTS_5ss_tab1,
                                                 input$CDTS_3ss_tab1,input$MES_5ss_tab1,input$MES_3ss_tab1,
                                                 input$donor_sequence_tab1,input$acceptor_sequence_tab1),
-                                    "Description" = c("Inter-species conservation across 17 primates. Calculated using the 100 bp sequence overlapping the 5'ss junction to 100 bp downstream the intron.\n
+                                    "Description" = c("Inter-species conservation across 17 primates. Calculated using the 100 bp sequence overlapping the 5' splice site downstream the intron. 
                                                       The higher is the PhastCons17 score, the more conserved is the 100 bp sequence evaluated across primates.",
                                                       
-                                                      "Inter-species conservation across 17 primates. Calculated using the 100 bp sequence overlapping the 3'ss junction to 100 bp upstream the intron.",
+                                                      "Inter-species conservation across 17 primates. Calculated using the 100 bp sequence overlapping the 3' splice site upstream the intron.",
                                                       
-                                                      "Sequence constraint across humans. Calculated using the 100 bp sequence overlapping the 5'ss junction to 100 bp downstream the intron.\n
-                                                      The higher is the CDTS score, the more sequence variation has been found across humans for the 100 bp sequence evaluated.",
+                                                      "Sequence constraint across humans. Calculated using the 100 bp sequence overlapping the 5' splice site downstream the intron.\n
+                                                      The higher is the CDTS score, the higher sequence variation across humans for the sequence evaluated.",
                                                       
-                                                      "Sequence constraint across humans. Calculated using the 100 bp sequence overlapping the 3'ss junction to 100 bp upstream the intron.",
+                                                      "Sequence constraint across humans of the 100 bp sequence overlapping the 3' splice site into the upstream intron.",
                                                       
-                                                      "Sequence motif similarity between the 9 bp sequence overlapping the 5'ss splice sequence and annotated splice sites. 
+                                                      "Sequence motif similarity of the 9 bp sequence overlapping the 5'ss splice sequence to known 5' splice sites in the human reference annotation. 
                                                       The higher is the score, the higher is the likelihood of the 5' splice site being recognised by the spliceosome machinery.",
                                                       
-                                                      "Sequence motif similarity between the 23 bp sequence overlapping the 3'ss splice sequence and annotated splice sites.", 
+                                                      "Sequence motif similarity of the 23 bp sequence overlapping the 3'ss splice sequence to known 3' splice sites in the human reference annotation.", 
                                                       
-                                                      "9 bp motif DNA sequences located at the 5'ss (-3/+6 bp). Obtained using the Human Primary DNA Assembly hg38.",
-                                                      "23 bp motif DNA sequences located at the 3'ss (-20/+3 bp). Obtained using the Human Primary DNA Assembly hg38." )),
+                                                      "9 bp motif DNA sequences located at the 5'ss (-3|+6 bp) of the junction evaluated (Human Primary DNA Assembly hg38).",
+                                                      "23 bp motif DNA sequences located at the 3'ss (-20|+3 bp) of the junction evaluated (Human Primary DNA Assembly hg38)." )),
                   rownames = F, 
                   extensions = c('Buttons', 'Responsive'),
                   
@@ -388,22 +783,100 @@ server <- function(input, output, session) {
 
   
   ##############################################################################
-  ## RETRIEVE SPLICING INFO FROM DATABASES
+  ## JUNCTION SEARCH - RETRIEVE SPLICING INFO FROM DATABASES 
   ##############################################################################
 
-  toListen <- eventReactive(list(input$acceptButton_tab1), {
+  
+  toListenNearBy <- eventReactive(input$acceptButton_tab1, {
+    
+    shinybusy::show_spinner(spin_id = "main_spinner")
+    
+    query_results <- query_database_nearby(chr = input$chr_tab1,
+                                           start = input$start_tab1,
+                                           end = input$end_tab1,
+                                           strand = input$strand_tab1,
+                                           databases_name = input$database_selection_tab1,
+                                           project_id = input$database_project_selection_tab1,
+                                           table_name = input$database_sample_type_selection_tab1,
+                                           nearby_window = input$database_nearby_tab1)
+    
+    shinybusy::hide_spinner(spin_id = "main_spinner")
+  
+    div(
+      h1("Splicing events found in the genomic region ",
+         paste0("[chr",input$chr_tab1, ":", (input$start_tab1 %>% as.integer() - input$database_nearby_tab1 %>% as.integer()), " - ", (input$end_tab1 %>% as.integer() + input$database_nearby_tab1 %>% as.integer()), ":",input$strand_tab1,"]")),
+      br(),
+      h4(strong("This region has been calculated after expanding the upstream and downstream search window by ", input$database_nearby_tab1, " base pairs.")),
+      p("All splicing events that overlap with the indicated genomic region across the selected database, sample cluster and sample type are shown below."),
+      br(),
+      query_results %>%
+        DT::renderDataTable(server = F,
+                            extensions = c('Buttons', 'Responsive'),
+                      options = list(order = list(0, 'desc'),
+                                     pageLength = -1,
+                                     dom = 'Bfrtip',
+                                     buttons = c('copy', 'csv', 'excel')),
+                      rownames = F,
+                      callback = DT::JS("table.rows().every(function(i, tab, row) {
+                      
+                      var $this = $(this.node());
+                      var nearby_value = document.getElementById('database_nearby_tab1').value;
+
+                      // We store the value of the slider range in a hidden text field before resetting it back again to zero value
+                      var onclick_f = 'Shiny.setInputValue(\"nearby_helper_tab1\",' + nearby_value + ');Shiny.setInputValue(\"database_nearby_tab1\",' + 0 + ');Shiny.setInputValue(\"start_tab1\",' + this.data()[2] + ');Shiny.setInputValue(\"end_tab1\",' + this.data()[3] + ');Shiny.onInputChange(\"acceptButton_tab1\",' + i + ',{priority:\"event\"});';
+                      
+                      var num = '<a id=\"' + i + '\" role=\"button\" onclick = ' + onclick_f + '> ' + this.data()[0] + '</a>';
+                      
+                      $this.find('td:eq(0)', row).html(num);
+                      
+                      });"))
+      ) %>%
+      return()
+  })
+  
+  output$queryNearByResults <- renderUI({
+    
+    req(input$acceptButton_tab1, cancelOutput = F)
+    
+    ## Remove previous tabs
+    for (tab_name in database_equivalences$name){
+      shiny::removeTab(inputId = "switcher", target = tab_name)  
+    }
+    
+    ## Hide previous results
+    shinyjs::hide(id = "switcher")
+    shinyjs::hide(selector = ".tabbable div.tab-content")
+    
+    ## Query database
+    if ( isolate(input$database_nearby_tab1) > 0 ) {
+      toListenNearBy()  
+    }
+    
+  })
+  
+  toListen <- eventReactive(input$acceptButton_tab1, {
+
+    shinybusy::show_spinner(spin_id = "main_spinner")
     
     ## Query databases
     query_results <- query_database(chr = input$chr_tab1,
                                     start = input$start_tab1,
                                     end = input$end_tab1,
                                     strand = input$strand_tab1,
-                                    input$database_select)
+                                    databases_name = input$database_selection_tab1,
+                                    project_id = input$database_project_selection_tab1,
+                                    table_name = input$database_sample_type_selection_tab1)
+
     
     if ( query_results %>% nrow > 0 ) {
-    
+
+      
+      
+      #message(shinyjs::runjs("alert($('#nearby_helper_tab1').val());alert( document.getElementById('nearby_helper_tab1').value);"))
+      
       ## Info about the junction that is common to all databases
-      v <- setup_UI_details_section(query_results)
+      v <- setup_UI_details_section(query_results, back_button = input$nearby_helper_tab1)
+      
       i <- (v %>% length()) + 1
       v[[i]] <- div(
         br(),
@@ -439,102 +912,167 @@ server <- function(input, output, session) {
       
     } else {
       shinybusy::hide_spinner(spin_id = "main_spinner")
-      p(strong("No results found!"))
+      p(strong("No results found using the criteria selected!"))
     }
     
   })
 
   output$queryResults <- renderUI({
-    
+
+    req(input$acceptButton_tab1, cancelOutput = F)
+
     ## Remove previous tabs
     for (tab_name in database_equivalences$name){
       shiny::removeTab(inputId = "switcher", target = tab_name)  
     }
     
-    
     ## Hide previous results
     shinyjs::hide(id = "switcher")
     shinyjs::hide(selector = ".tabbable div.tab-content")
     
-    ## Show loading spinner
-    shinybusy::show_spinner(spin_id = "main_spinner")
-    
     ## Query database
-    toListen()
-    
+    if ( isolate(input$database_nearby_tab1) == 0 ) {
+      toListen()
+    }
     
   })
   
-  ###########################################
-  ## RETRIEVE METADATA OUTPUT
-  ###########################################
   
-  toListen_getDBMetadata <- eventReactive(list(input$tab_panel_DB_info), {
-    if (input$tab_panel_DB_info == "GTEx v8") {
-      data_to_plot <- visualise_metadata_sample_clusters_gtex(input$tab_panel_DB_info)    
+  
+  ##############################################################################
+  ## GENE SEARCH - RETRIEVE SPLICING INFO FROM DATABASES 
+  ##############################################################################
+  
+  toListenGene <- eventReactive(input$acceptButton_tab2, {
+    
+    shinybusy::show_spinner(spin_id = "tab2_spinner")
+    
+    ## Get the database to query
+    database_sqlite <- database_equivalences %>% filter(key == input$database_tab2) %>% pull(sqlite_file)
+    
+    
+    data_gene_comparison <- get_required_data_before_gene_comparison(database.sqlite = database_sqlite,
+                                                                     project.id = input$database_project_tab2,
+                                                                     sample.type = input$database_sample_type_tab2, 
+                                                                     compare.table = input$visualise_mode_tab2,
+                                                                     junction.type = input$splicing_event_type_tab2,
+                                                                     gene.name = input$gene_tab2)
+    
+    
+    message(data_gene_comparison$unique_junctions, " jxn_to_process")
+    
+    if ( data_gene_comparison$compare && 
+         (is.null(data_gene_comparison$unique_junctions) || length(data_gene_comparison$unique_junctions) == 0 ) ) {
+      
+      shinybusy::hide_spinner(spin_id = "tab2_spinner")
+      
+      tagList(
+        
+        shiny::h1(em(database_equivalences %>% filter(sqlite_file == database_sqlite) %>% pull(name_title))),
+        br(),
+        renderPlot({
+          visualise_empty_plot(text = paste0("There are no novel splicing events originating from the '", input$gene_tab2, "' gene\nthat are only found in '", input$database_sample_type_tab2 ,"' samples\nwithin the '",input$database_project_tab2,"' experiment."))
+        })
+        
+        
+      )
+      
     } else {
-      data_to_plot <- visualise_metadata_sample_clusters(input$tab_panel_DB_info)  
+
+
+      
+      # gene_data_to_visualise <- get_gene_splicing_data_to_visualise(gene.id,
+      #                                     transcript.id,
+      #                                     database.sqlite,
+      #                                     project.id,
+      #                                     table.name,
+      #                                     junction.type,
+      #                                     compare) 
+      
+      gene_data_to_visualise <- get_gene_splicing_data_to_visualise(gene.id = input$gene_tab2,
+                                                                    transcript.id = input$transcript_tab2,
+                                                                    database.sqlite = database_sqlite,
+                                                                    project.id = input$database_project_tab2,
+                                                                    table.name = data_gene_comparison$table_name,
+                                                                    junction.type = input$splicing_event_type_tab2,
+                                                                    compare = data_gene_comparison$unique_junctions) 
+      
+      tagList(
+        
+        shiny::h1(database_equivalences %>% filter(sqlite_file == database_sqlite) %>% pull(name_title)),
+        br(),
+        
+        
+        #database_sqlite <- databases_sqlite_list[1]
+        
+        #lapply(1:(data_gene_comparison$table_name %>% length()), function(n) {    ## Query visualisation gene splicing in selected database
+          
+          # n <- 1
+       
+        
+        renderPlot({
+          visualise_gene_data(gene_data_to_visualise)
+        }, width = "auto", height = 800),
+        
+        #shiny::h3("Details:"),
+        DT::renderDataTable(expr = DT::datatable(gene_data_to_visualise$junctions_to_plot,
+                                                 rownames = F, 
+                                                 extensions = c('Buttons', 'Responsive'),
+                                                 
+                                                 options = list(
+                                                   pageLength = 10,
+                                                   dom = 'Bfrtip',
+                                                   buttons = c('copy', 'csv', 'excel')
+                                                 )) ,
+                            server = T),
+          
+          
+          
+        #}),
+        shinybusy::hide_spinner(spin_id = "tab2_spinner")
+      )
     }
     
+  })
+  
+  output$geneQueryResults <- renderUI({
+    
+    req(input$acceptButton_tab2, cancelOutput = T)
+    req(input$transcript_tab2, cancelOutput = T)
+    req(input$gene_tab2, cancelOutput = T)
+    toListenGene()
+    
+  })
+  
+  ##################################################
+  ## DATABASES INFO TAB - RETRIEVE METADATA OUTPUT
+  ##################################################
+  
+  toListen_getDBMetadata <- eventReactive(list(input$tab_panel_DB_info), {
+    shinybusy::show_spinner(spin_id = "main_spinner_tab2")
+    data_to_plot <- visualise_metadata_sample_clusters(input$tab_panel_DB_info)  
     shinybusy::hide_spinner(spin_id = "main_spinner_tab2")
+    
     data_to_plot %>% return()
   })
   
   output$tcga_metadata_output_tab2 <- renderPlot({
-    shinybusy::show_spinner(spin_id = "main_spinner_tab2")
-    shinyjs::runjs(code = '$("#tcga_metadata_output_tab2 > img").addClass("d-none");')
-    shinyjs::runjs(code = '$("#tcga_metadata_output_tab2 > img").remove();')
     toListen_getDBMetadata()
   })
+  
+  output$gtex_metadata_output_tab2 <- renderPlot({
+    toListen_getDBMetadata()
+  })
+  
+  output$ENCODE_metadata_output_tab2 <- renderPlot({
+    toListen_getDBMetadata()
+  })
+  
   output$tcga_cancer_types_output_tab2 <- renderUI({
     div(h3(strong("Cancer types")),
         DT::datatable(data = table_cancer_types(),
                       rownames = F)) %>% return()
   })
-  
-  
-  output$gtex_metadata_output_tab2 <- renderPlot({
-    shinybusy::show_spinner(spin_id = "main_spinner_tab2")
-    shinyjs::runjs(code = '$("#gtex_metadata_output_tab2 > img").addClass("d-none");')
-    shinyjs::runjs(code = '$("#gtex_metadata_output_tab2 > img").remove();')
-    toListen_getDBMetadata()
-  })
-  
-  output$gtex_age_metadata_output_tab2 <- renderPlot({
-    shinybusy::show_spinner(spin_id = "main_spinner_tab2")
-    shinyjs::runjs(code = '$("#gtex_age_metadata_output_tab2 > img").addClass("d-none");')
-    shinyjs::runjs(code = '$("#gtex_age_metadata_output_tab2 > img").remove();')
-    toListen_getDBMetadata()
-  })
-  
-  output$ENCODE_metadata_output_tab2 <- renderPlot({
-    shinybusy::show_spinner(spin_id = "main_spinner_tab2")
-    shinyjs::runjs(code = '$("#ENCODE_metadata_output_tab2 > img").addClass("d-none");')
-    shinyjs::runjs(code = '$("#ENCODE_metadata_output_tab2 > img").remove();')
-    toListen_getDBMetadata()
-  })
-  
-  output$SRP100948_metadata_output_tab2 <- renderPlot({
-    shinybusy::show_spinner(spin_id = "main_spinner_tab2")
-    shinyjs::runjs(code = '$("#SRP100948_metadata_output_tab2 > img").addClass("d-none");')
-    shinyjs::runjs(code = '$("#SRP100948_metadata_output_tab2 > img").remove();')
-    toListen_getDBMetadata()
-  })
-  
-  output$SRP058181_metadata_output_tab2 <- renderPlot({
-    shinybusy::show_spinner(spin_id = "main_spinner_tab2")
-    shinyjs::runjs(code = '$("#SRP058181_metadata_output_tab2 > img").addClass("d-none");')
-    shinyjs::runjs(code = '$("#SRP058181_metadata_output_tab2 > img").remove();')
-    toListen_getDBMetadata()
-  })
-  
-  output$SRP151040_metadata_output_tab2 <- renderPlot({
-    shinybusy::show_spinner(spin_id = "main_spinner_tab2")
-    shinyjs::runjs(code = '$("#SRP151040_metadata_output_tab2 > img").addClass("d-none");')
-    shinyjs::runjs(code = '$("#SRP151040_metadata_output_tab2 > img").remove();')
-    toListen_getDBMetadata()
-  })
-  
   
   ###########################################
   ## DOWNLOAD HANDLERS

@@ -78,6 +78,8 @@ RUN R -e 'install.packages(c("ggpubr"), repos="http://cran.rstudio.com/", depend
 RUN R -e 'install.packages(c("ggrepel"), repos="http://cran.rstudio.com/", dependencies = T)'
 
 RUN R -e 'install.packages(c("shinybusy"), repos="http://cran.rstudio.com/", dependencies = T)'
+RUN R -e 'install.packages(c("tidytext"), repos="http://cran.rstudio.com/", dependencies = T)'
+RUN R -e 'install.packages(c("here"), repos="http://cran.rstudio.com/", dependencies = T)'
 
 ####### COPY Rprofile #########
 
