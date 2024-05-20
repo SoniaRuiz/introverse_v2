@@ -32,7 +32,7 @@ source("scripts/tab4/01_backend_tab4.R")
 
 
 # Define UI for application that draws a histogram
-ui <- navbarPage("IntroVerse V2",
+ui <- navbarPage("IntroVerse 2.0",
                  
                  inverse=TRUE,
                  id = "introverse_menu",
@@ -44,8 +44,8 @@ ui <- navbarPage("IntroVerse V2",
                    tags$link(rel = "stylesheet", type = "text/css", href = "api.css"),
                    ## Google Analytics
                    # Google tag (gtag.js)
-                   #tags$script(src = "https://www.googletagmanager.com/gtag/js?id=G-PD5SEMENW0", "async"),
-                   #tags$script(src = "google_analytics.js"),
+                   tags$script(src = "https://www.googletagmanager.com/gtag/js?id=G-PD5SEMENW0", "async"),
+                   tags$script(src = "google_analytics.js"),
                    ## IGV
                    tags$script(src = "https://cdn.jsdelivr.net/npm/igv@2.15.5/dist/igv.min.js"),
                    tags$script(src = "igv.js")
@@ -189,7 +189,11 @@ ui <- navbarPage("IntroVerse V2",
                                 p(id = "MES_5ss_tab1",""),
                                 p(id = "MES_3ss_tab1",""),
                                 p(id = "donor_sequence_tab1",""),
-                                p(id = "acceptor_sequence_tab1","")
+                                p(id = "acceptor_sequence_tab1",""),
+                                
+                                p(id = "CLNSIG_list_tab1",""),
+                                p(id = "CLNVC_list_tab1",""),
+                                p(id = "MC_list_tab1","")
                               )
                               
                             ),
@@ -280,8 +284,7 @@ ui <- navbarPage("IntroVerse V2",
                               shiny::selectInput(inputId = "database_tab2",
                                                  label = "Database",
                                                  selected = "tcga",
-                                                 choices = c("All" = "all",
-                                                             "The Cancer Genome Atlas Program (TCGA)" = "tcga",
+                                                 choices = c("The Cancer Genome Atlas Program (TCGA)" = "tcga",
                                                              "The Genotype-Tissue Expression (GTEx) v8" = "gtex",
                                                              #"AD/Control" = "ad",
                                                              #"PD/Control" = "pd",
@@ -323,14 +326,14 @@ ui <- navbarPage("IntroVerse V2",
                                              selected = NULL),
                               
                               selectizeInput(inputId = "transcript_tab2",
-                                             label = "Transcript:",
+                                             label = "Transcript (Ensembl v111):",
                                              choices = NULL,
                                              multiple = F,
                                              options = list(
                                                placeholder = "Select transcript",
                                                options = list(create = FALSE)),
                                              selected = NULL),
-                              
+                              hr(),
                               actionButton(inputId = "acceptButton_tab2", class = "btn-primary", label = "Visualise Splicing")
                             ),
                             mainPanel(
@@ -548,14 +551,12 @@ server <- function(input, output, session) {
     names(genes_choices) <- c(chosen_gene_list$gene_name, chosen_gene_list$gene_id) %>% as.list()
     updateSelectizeInput(session, 'gene_tab2', choices = genes_choices, server = TRUE)  
     
-    
-    
     ## 2. Update the list of projects available depending on the database selected
     sample_project_choices <- set_database_project_dropdown(database_key = input$database_tab2)
-    if (sample_project_choices[1] == "All") {
+    if (sample_project_choices[1] == "all") {
       sample_project_choices <- sample_project_choices[-1]
     }
-    updateSelectInput(session, inputId = "database_project_tab2", choices = sample_project_choices, selected = sample_project_choices[2])
+    updateSelectInput(session, inputId = "database_project_tab2", choices = sample_project_choices, selected = sample_project_choices[1])
 
   }, ignoreInit = F)
   
@@ -565,12 +566,12 @@ server <- function(input, output, session) {
     
     if ( sample_cluster_choices %>% length() == 1) {
       updateSelectInput(session, inputId = "database_sample_type_tab2", choices = sample_cluster_choices)
-      updateSelectInput(session, inputId = "visualise_mode_tab2", choices = c("All splicing events" = "all"))
+      updateSelectInput(session, inputId = "visualise_mode_tab2", choices = c("All splicing events" = F))
       
     } else {
       updateSelectInput(session, inputId = "database_sample_type_tab2", choices = sample_cluster_choices[-1], selected = sample_cluster_choices[2])
-      updateSelectInput(session, inputId = "visualise_mode_tab2", choices = c("All splicing events" = "all",
-                                                                              "Unique splicing events to this sample group" = "compare"))
+      updateSelectInput(session, inputId = "visualise_mode_tab2", choices = c("All splicing events" = F,
+                                                                              "Unique splicing events to this sample group" = T))
     }
 
   }, ignoreInit = T)
@@ -578,16 +579,8 @@ server <- function(input, output, session) {
   observeEvent(input$gene_tab2, {
     
     shinyjs::disable(id = "acceptButton_tab2")
-    if (input$database_tab2 == "tcga") {
-      chosen_conn <- conn_list$TCGA_1read_subsampleFALSE.sqlite
-      
-    } else if (input$database_tab2 == "gtex") {
-      chosen_conn <- conn_list$splicing_1read.sqlite  
-      
-    } else if (input$database_tab2 == "encode_sh") {
-      chosen_conn <- conn_list$ENCODE_SR_1read.sqlite  
-      
-    }
+    
+    chosen_conn <- conn_list[database_equivalences %>% filter(key == input$database_tab2) %>% pull(sqlite_file)][[1]]
     transcripts_gene = get_database_transcripts(con = chosen_conn, gene_name = input$gene_tab2)
     
     transcript_choices <- c(transcripts_gene$transcript_id) %>% as.list()
@@ -606,14 +599,14 @@ server <- function(input, output, session) {
   observeEvent(list(input$igv_browser_database_selection_tab1), {
     
     sample_project_choices <- set_database_project_dropdown(database_key = input$igv_browser_database_selection_tab1)
-    if (sample_project_choices[1] == "All") {
+    if (sample_project_choices[1] == "all") {
       sample_project_choices <- sample_project_choices[-1]
     }
     ## Tab IGV Browser
     updateSelectInput(session, 
                       inputId = "igv_browser_database_project_selection_tab1", 
                       choices = sample_project_choices, 
-                      selected = sample_project_choices[2])
+                      selected = sample_project_choices[1])
     
     shinyjs::enable(id = "igv_browser_database_project_selection_tab1")
     
@@ -639,26 +632,53 @@ server <- function(input, output, session) {
   # Manage the selection of the correct bigWig files
   observeEvent(input$igv_browser_acceptButton_tab1, {
     
+    database_path <- file.path(here::here(), "database/bigwig.sqlite")
+    
     ## Load data
-    bigWig <- readRDS(file = file.path(here::here(), "dependencies/bigWig_URLs.rds")) %>%
+    tryCatch(
+      eval(con <- DBI::dbConnect(RSQLite::SQLite(), database_path)),
+      error = function(e) {
+        showNotification(paste("Error in 'dbConnect': ", e$message), type = "error")
+      }
+    )
+    
+    bigWig <- DBI::dbGetQuery(con, paste0("SELECT * FROM 'bigwig'")) %>% as_tibble()
+    DBI::dbDisconnect(conn = con)
+    
+    message(input$igv_browser_database_project_selection_tab1 , " ",
+            input$igv_browser_database_sample_type_selection_tab1 %>% str_to_title())
+    
+    bigWig <- bigWig %>%
       filter(project == input$igv_browser_database_project_selection_tab1 )
     
     
     ## Retrieve the BigWig URLs
     if (input$igv_browser_database_sample_type_selection_tab1 != "all") {
+      
+    
       bigWig <- bigWig %>%
         filter(cluster == input$igv_browser_database_sample_type_selection_tab1 %>% str_to_title())
-      print(bigWig %>% head())
     }
 
-    shinyjs::html(id = "bigwig_categories", html = paste(bigWig$cluster, collapse = ";"))
+    tryCatch(
+      eval(shinyjs::html(id = "bigwig_categories", html = paste(bigWig$cluster, collapse = ";"))),
+      error = function(e) {
+        showNotification(paste("Error in 'bigwig_categories': ", e$message), type = "error")
+      }
+    )
     tryCatch(
       eval(shinyjs::html(id = "bigwig_urls", html = paste(bigWig$BigWigURL, collapse = ";"))),
       error = function(e) {
         showNotification(paste("Error in 'bigwig_urls': ", e$message), type = "error")
       }
     )
-    shinyjs::html(id = "bigwig_types", html = paste(bigWig$BigWig_type, collapse = ";"))
+    tryCatch(
+      eval(shinyjs::html(id = "bigwig_types", html = paste(bigWig$BigWig_type, collapse = ";"))),
+      error = function(e) {
+        showNotification(paste("Error in 'bigwig_types': ", e$message), type = "error")
+      }
+    )
+    
   
     shinyjs::runjs(code = "loadBigWigFiles($('#bigwig_categories').html(), $('#bigwig_urls').html(), $('#bigwig_types').html());")
     
@@ -722,6 +742,11 @@ server <- function(input, output, session) {
   visualiseClinVarPlot <- function() {
     clinvar_plot <- visualise_clinvar(junID = str_replace_all(string = input$junID_tab1, pattern = "%20", replacement = " "),
                                       clinvar_locus = str_replace_all(string = input$clinvarlocus_tab1, pattern = "%20", replacement = " "),
+                                      
+                                      CLNSIG_list = str_replace_all(string = input$CLNSIG_list_tab1, pattern = "%20", replacement = " "),
+                                      CLNVC_list = str_replace_all(string = input$CLNVC_list_tab1, pattern = "%20", replacement = " "),
+                                      MC_list = str_replace_all(string = input$MC_list_tab1, pattern = "%20", replacement = " "),
+                                      
                                       geneName = str_replace_all(string = input$geneName_tab1, pattern = "%20", replacement = " "),
                                       database_name = str_replace_all(string = input$databaseName_tab1, pattern = "%20", replacement = " "),
                                       junType = str_replace_all(string = input$junType_tab1, pattern = "%20", replacement = " "))
@@ -744,9 +769,14 @@ server <- function(input, output, session) {
     DT::datatable(data = data.frame("Property" = c("PhastCons17 5'ss (100 bp)","PhastCons17 3'ss (100 bp)","CDTS 5'ss (100 bp)",
                                                    "CDTS 3'ss (100 bp)","MaxEntScan 5'ss (9 bp)","MaxEntScan 3'ss (23 bp)", 
                                                    "5'ss sequence (3bp | 6bp)", "3'ss sequence (20bp | 3bp)" ),
-                                    "Value" = c(input$phastCons17_5ss_tab1,input$phastCons17_3ss_tab1,input$CDTS_5ss_tab1,
-                                                input$CDTS_3ss_tab1,input$MES_5ss_tab1,input$MES_3ss_tab1,
-                                                input$donor_sequence_tab1,input$acceptor_sequence_tab1),
+                                    "Value" = c(input$phastCons17_5ss_tab1,
+                                                input$phastCons17_3ss_tab1,
+                                                input$CDTS_5ss_tab1,
+                                                input$CDTS_3ss_tab1,
+                                                input$MES_5ss_tab1,
+                                                input$MES_3ss_tab1,
+                                                input$donor_sequence_tab1,
+                                                input$acceptor_sequence_tab1),
                                     "Description" = c("Inter-species conservation across 17 primates. Calculated using the 100 bp sequence overlapping the 5' splice site downstream the intron. 
                                                       The higher is the PhastCons17 score, the more conserved is the 100 bp sequence evaluated across primates.",
                                                       
@@ -951,96 +981,86 @@ server <- function(input, output, session) {
     database_sqlite <- database_equivalences %>% filter(key == input$database_tab2) %>% pull(sqlite_file)
     
     
-    data_gene_comparison <- get_required_data_before_gene_comparison(database.sqlite = database_sqlite,
-                                                                     project.id = input$database_project_tab2,
-                                                                     sample.type = input$database_sample_type_tab2, 
-                                                                     compare.table = input$visualise_mode_tab2,
-                                                                     junction.type = input$splicing_event_type_tab2,
-                                                                     gene.name = input$gene_tab2)
+    # message(input$gene_tab2, " ", input$transcript_tab2, " ", database_sqlite, " ", input$database_project_tab2, " ", input$database_sample_type_tab2, " ", 
+    #         input$visualise_mode_tab2, " ", input$splicing_event_type_tab2)
     
-    
-    message(data_gene_comparison$unique_junctions, " jxn_to_process")
-    
-    if ( data_gene_comparison$compare && 
-         (is.null(data_gene_comparison$unique_junctions) || length(data_gene_comparison$unique_junctions) == 0 ) ) {
-      
-      shinybusy::hide_spinner(spin_id = "tab2_spinner")
-      
-      tagList(
-        
-        shiny::h1(em(database_equivalences %>% filter(sqlite_file == database_sqlite) %>% pull(name_title))),
-        br(),
-        renderPlot({
-          visualise_empty_plot(text = paste0("There are no novel splicing events originating from the '", input$gene_tab2, "' gene\nthat are only found in '", input$database_sample_type_tab2 ,"' samples\nwithin the '",input$database_project_tab2,"' experiment."))
-        })
-        
-        
-      )
-      
-    } else {
+    gene_data_to_visualise <- get_gene_splicing_data_to_visualise(gene.id = input$gene_tab2,
+                                                                  transcript.id = input$transcript_tab2,
+                                                                  database.sqlite = database_sqlite,
+                                                                  project.id = input$database_project_tab2,
+                                                                  table.name = input$database_sample_type_tab2,
+                                                                  junction.type = input$splicing_event_type_tab2,
+                                                                  compare = input$visualise_mode_tab2)
 
+    shinybusy::hide_spinner(spin_id = "tab2_spinner")
 
-      
-      # gene_data_to_visualise <- get_gene_splicing_data_to_visualise(gene.id,
-      #                                     transcript.id,
-      #                                     database.sqlite,
-      #                                     project.id,
-      #                                     table.name,
-      #                                     junction.type,
-      #                                     compare) 
-      
-      gene_data_to_visualise <- get_gene_splicing_data_to_visualise(gene.id = input$gene_tab2,
-                                                                    transcript.id = input$transcript_tab2,
-                                                                    database.sqlite = database_sqlite,
-                                                                    project.id = input$database_project_tab2,
-                                                                    table.name = data_gene_comparison$table_name,
-                                                                    junction.type = input$splicing_event_type_tab2,
-                                                                    compare = data_gene_comparison$unique_junctions) 
-      
+    if ( all(names(gene_data_to_visualise) == "error") ) {
+
       tagList(
-        
+
         shiny::h1(database_equivalences %>% filter(sqlite_file == database_sqlite) %>% pull(name_title)),
         br(),
-        
-        
+        renderPlot({
+          visualise_empty_plot(text = gene_data_to_visualise$error)
+        })
+      )
+
+    } else {
+
+      
+      tagList(
+
+        shiny::h1(database_equivalences %>% filter(sqlite_file == database_sqlite) %>% pull(name_title)),
+        br(),
+
+
         #database_sqlite <- databases_sqlite_list[1]
-        
+
         #lapply(1:(data_gene_comparison$table_name %>% length()), function(n) {    ## Query visualisation gene splicing in selected database
-          
+
           # n <- 1
-       
+
         
         renderPlot({
-          visualise_gene_data(gene_data_to_visualise)
-        }, width = "auto", height = 800),
-        
+          visualise_gene_data(gene_splicing_data = gene_data_to_visualise)
+        }, width = "auto", height = 600),
+
         #shiny::h3("Details:"),
-        DT::renderDataTable(expr = DT::datatable(gene_data_to_visualise$junctions_to_plot,
-                                                 rownames = F, 
+        DT::renderDataTable(expr = DT::datatable(data = gene_data_to_visualise$junctions_to_plot  %>%
+                                                   mutate(junction_type = str_replace_all(junction_type, pattern = "_", replacement = " ") %>% str_to_title()) %>%
+                                                   dplyr::select(-c(ID,junction_color)) %>%
+                                                   dplyr::rename("Transcript ID" = transcript_id,
+                                                                 "Total split read counts" = sum_counts,
+                                                                 "Junction type" = junction_type),
+                                                 rownames = T,
                                                  extensions = c('Buttons', 'Responsive'),
-                                                 
+                                                 caption = htmltools::tags$caption(
+                                                   style = 'caption-side: top; color:black;',
+                                                   htmltools::h2('Junction details:')),
                                                  options = list(
-                                                   pageLength = 10,
+                                                   order = list(list(8, 'asc'), list(2, 'asc')),
+                                                   pageLength = 15,
                                                    dom = 'Bfrtip',
                                                    buttons = c('copy', 'csv', 'excel')
                                                  )) ,
                             server = T),
-          
-          
-          
-        #}),
         shinybusy::hide_spinner(spin_id = "tab2_spinner")
+
+
+
+        #}),
+        
       )
+      
     }
     
   })
   
   output$geneQueryResults <- renderUI({
     
-    req(input$acceptButton_tab2, cancelOutput = T)
-    req(input$transcript_tab2, cancelOutput = T)
-    req(input$gene_tab2, cancelOutput = T)
+    req(input$acceptButton_tab2, cancelOutput = F)
     toListenGene()
+    
     
   })
   

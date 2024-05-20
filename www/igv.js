@@ -45,7 +45,10 @@ function loadBigWigFiles(bigwigCategories, bigwigURLs, bigwigTypes) {
   {
     
     var max_tracks = "";
-    if (uniqueCategories.length == 1 && URLs.length > 50) {
+    
+    if (URLs.length < 50) {
+      max_tracks = URLs.length;
+    } else if (uniqueCategories.length == 1 && URLs.length > 50) {
       max_tracks = 50;
     } else if (uniqueCategories.length > 1 && ((URLs.length/uniqueCategories.length) > 100)) {
       max_tracks = 50 * uniqueCategories.length;
@@ -72,6 +75,7 @@ function loadBigWigFiles(bigwigCategories, bigwigURLs, bigwigTypes) {
       if (uniqueCategories[i] == categories[j]) {
         
         var coverage_color = "#999999";
+        
         if ( strand_type[j] == "minus" ) {
           coverage_color = "#cccccc";
         }
@@ -89,6 +93,7 @@ function loadBigWigFiles(bigwigCategories, bigwigURLs, bigwigTypes) {
     
     local_bigwig_track.name = local_bigwig_track.name + " (" + local_bigwig_track.tracks.length + " samples)";
     reference.tracks.push(local_bigwig_track);
+    console.log(URLs.length);
   }
   
   

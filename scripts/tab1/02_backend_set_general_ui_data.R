@@ -208,6 +208,9 @@ set_UI_clinvar_information <- function(jxn_info) {
                                            Shiny.setInputValue('clinvarlocus_tab1', this.text );
                                            var junType= $('#span_junType')[0].innerText; 
                                            Shiny.setInputValue('junType_tab1', junType);
+Shiny.setInputValue('CLNSIG_list_tab1', $('#CLNSIG_list')[0].innerText);
+Shiny.setInputValue('CLNVC_list_tab1', $('#CLNVC_list')[0].innerText);
+Shiny.setInputValue('MC_list_tab1', $('#MC_list')[0].innerText);
                                            var gene_Name= $('#span_geneName')[0].innerText; 
                                            Shiny.setInputValue('geneName_tab1', gene_Name);
                                            $('#modalVisualiseClinVar_tab1').modal('show');",

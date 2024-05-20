@@ -203,6 +203,23 @@ query_database <- function(chr, start, end, strand,
                            databases_name, 
                            project_id = NULL,
                            table_name = NULL) {
+  
+  # chr = 10
+  # start = 87880439
+  # end = 87925512
+  # strand = "+"
+  # databases_name = "gtex"
+  # project_id = "ADIPOSE_TISSUE"
+  # table_name = "Adipose - Subcutaneous"
+  
+  # chr = 19
+  # start = 4491836
+  # end = 4492014
+  # strand ="+"
+  # databases_name = "tcga"
+  # project_id = "LAML"
+  # table_name = "Primary blood derived cancer - peripheral blood"
+  
   # chr = 19
   # start = 4501318
   # end = 4501913
@@ -453,7 +470,7 @@ query_database <- function(chr, start, end, strand,
       if ( local_query_result %>% nrow() > 0) {
         
         ## We add the master information about the genes and transcripts
-        query <- paste0("SELECT transcript.id, transcript.transcript_id AS transcript_ENS, transcript.MANE, gene.gene_name 
+        query <- paste0("SELECT transcript.id, transcript.transcript_id AS transcript_ENS, transcript.MANE, transcript.transcript_biotype, gene.gene_name 
                         FROM 'transcript' INNER JOIN 'gene' ON transcript.gene_id=gene.id
                         WHERE transcript.id IN (", master_information$transcript_id_list %>% unique, ")")
         db_gene <- DBI::dbGetQuery(con, query)
@@ -542,6 +559,13 @@ setup_UI_details_section <- function(query_results, back_button = NULL) {
     p(id = "donor_sequence", style = "display:none;", common_jxn_info %>% drop_na(donor_sequence) %>% pull(donor_sequence) %>% unique),
     p(id = "acceptor_sequence", style = "display:none;", common_jxn_info %>% drop_na(acceptor_sequence) %>% pull(acceptor_sequence) %>% unique),
     
+
+    
+    p(id = "CLNSIG_list", style = "display:none;", common_jxn_info %>% drop_na(CLNSIG_list) %>% pull(CLNSIG_list)),
+    p(id = "CLNVC_list", style = "display:none;", common_jxn_info %>% drop_na(CLNVC_list) %>% pull(CLNVC_list)),
+    p(id = "MC_list", style = "display:none;", common_jxn_info %>% drop_na(MC_list) %>% pull(MC_list)),
+    
+    
     ## Set visible info
     h3("Junction Details"),
     hr(),
@@ -570,6 +594,8 @@ setup_UI_details_section <- function(query_results, back_button = NULL) {
              Shiny.setInputValue('MES_3ss_tab1', $('#MES_3ss')[0].innerText);
              Shiny.setInputValue('donor_sequence_tab1', $('#donor_sequence')[0].innerText);
              Shiny.setInputValue('acceptor_sequence_tab1', $('#acceptor_sequence')[0].innerText);
+
+
              
              $('#modalVisualiseMORE_tab1').modal('show');", 
              "More info...")),
@@ -720,6 +746,10 @@ setup_UI_results_section <- function(query_results) {
                                            "mean_phastCons17way5ss_100","mean_phastCons17way3ss_100",
                                            "mean_CDTS5ss_100","mean_CDTS3ss_100", "clinvar","ref_type", "clinvar_locus",
                                            "donor_sequence", "acceptor_sequence", "length","database","gene_name","MANE",
+                                           "transcript_biotype", 
+                                           "CLNSIG_list",
+                                           "CLNVC_list",
+                                           "MC_list",
                                            "mes5ss","mes3ss"))))  %>% 
       
       dplyr::rename(dplyr::any_of(rename_column_lookup)) 

@@ -66,30 +66,37 @@ set_database_sample_type_dropdown <- function(database_key, project_id) {
   
   # database_key <- "encode_sh"
   # project_id <- "ADAR"
+  
+  # database_key <- "gtex"
+  # project_id <- "BRAIN"
 
   message(database_key, " - ",project_id)
   
   database_sqlite <- database_equivalences %>% filter(key == database_key) %>% pull(sqlite_file)
   database_metadata <- get_database_metadata(database_sqlite_list = database_sqlite, project = project_id)[[1]] %>% as_tibble()
   
-  cluster_data <- database_metadata %>% 
+  cluster_data <- database_metadata %>%
+    group_by(cluster) %>%
+    distinct(sample_id, .keep_all = T) %>%
+    ungroup %>%
     dplyr::count(cluster) %>%
     distinct(cluster, .keep_all = T) %>% 
-    arrange() %>% 
+    arrange(cluster) %>% 
     drop_na() %>%
     filter(cluster != "") %>%
     as.data.frame() %>%
     mutate(cluster_label = paste0(cluster %>% str_to_sentence(), " (",n," samples)"))
   
   if ( cluster_data %>% nrow() > 1 ) {
-    cluster_data <- rbind(cluster_data, data.frame(cluster = "all", n = "", cluster_label = "All")) %>%
-      arrange(cluster)
+    cluster_data <- rbind(data.frame(cluster = "all", n = "", cluster_label = "All"), cluster_data)
   } 
   
-  if ( any(str_detect(string = str_to_lower(cluster_data$cluster_label),
-                      pattern = "case")) ) {
-    index_case <- which(str_to_lower(cluster_data$cluster_label) == "case")
-    cluster_data$cluster_label[index_case] <- "shRNA knockdown"
+  if ( any(str_detect(string = str_to_lower(cluster_data$cluster_label), pattern = "case")) ) {
+    index_case <- which(str_detect(string = str_to_lower(cluster_data$cluster_label),
+                                   pattern = "case"))
+    cluster_data$cluster_label[index_case] <- str_replace(string = cluster_data$cluster_label[index_case] %>% str_to_lower(),
+                                                          pattern = "case",
+                                                          replacement = "shRNA knockdown")
   }
   
   cluster_keys <- cluster_data$cluster

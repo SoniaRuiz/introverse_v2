@@ -3,16 +3,22 @@ visualise_transcript <- function(junID,
                                  transcript_ENS,
                                  database_name,
                                  junType) {
+
   
-  
-  # junID = "chr1:154597977-154598075:-" 
-  # transcript_ENS = "ENST00000647682"
-  # database_name = "LRRK2 G2019S mutation"
-  # junType <- "Novel Donor"
+  # junID = "chr19:4491836-4492014:+" 
+  # transcript_ENS = "ENST00000616600"
+  # database_name = "GTEx v8"
+  # junType <- "Novel Acceptor"
+
   
   # junType <- "Novel Donor"
   # junID = "chr10:87862643-87864453:+"
   # transcript_ENS = "ENST00000688308"
+  # database_name = "TCGA"
+  
+  # junType <- "Novel Acceptor"
+  # junID = "chr19:4496406-4502025:+"
+  # transcript_ENS = "ENST00000616600"
   # database_name = "TCGA"
   
   message(junType)
@@ -30,11 +36,12 @@ visualise_transcript <- function(junID,
   
   
   ## Get coordinates from the junction selected
-  df_intron_gr <- get_genomic_coordinates(junID) %>% GenomicRanges::GRanges()
+  junID_coordinates <- get_genomic_coordinates(junID)
   
   
   ## Get coordinates from the transcript selected
-  hg38_transcript_to_plot <- get_transcript_to_plot( junID = junID, transcript_id = transcript_ENS ) 
+  hg38_transcript_to_plot <- get_transcript_to_plot( junID = junID, transcript_id = transcript_ENS )
+  hg38_transcript_to_plot$exons <- hg38_transcript_to_plot$exons %>% arrange(start)
   
   
   #############################
@@ -51,19 +58,16 @@ visualise_transcript <- function(junID,
                                              pattern = "_", replacement = " "), "'."))) %>%
       return()
     
+    
   } else {
   
 
-    ## GET THE EXONS THAT WILL BE ZOOMED IN
-    index_first_exon <- which(abs(hg38_transcript_to_plot$exons$start - (df_intron_gr %>% GenomicRanges::end())) == 
-                                min(abs(hg38_transcript_to_plot$exons$start-(df_intron_gr %>% GenomicRanges::end()))))
-    index_second_exon <- which(abs(hg38_transcript_to_plot$exons$end - (df_intron_gr %>% GenomicRanges::start())) == 
-                                 min((abs(hg38_transcript_to_plot$exons$end - (df_intron_gr %>% GenomicRanges::start())))[-index_first_exon]))
+
+    exons_to_zoom <- get_exons_to_zoom(jun.type = junType, 
+                                       intron.to.zoom = junID_coordinates,
+                                       transcript.to.plot = hg38_transcript_to_plot)
     
-    exons_to_zoom <- rbind(hg38_transcript_to_plot$exons[index_first_exon,],
-                           hg38_transcript_to_plot$exons[index_second_exon,])
     
-    print(hg38_transcript_to_plot$exons$strand %>% unique)
     ## PLOT
     
     if ( hg38_transcript_to_plot$exons %>% nrow() > 0 ) {
@@ -74,11 +78,11 @@ visualise_transcript <- function(junID,
           xend = end,
           y = hg38_transcript_to_plot$exons$transcript_id %>% unique()
         )) +
-        ggtree::geom_range(
+        ggtranscript::geom_range(
           data = hg38_transcript_to_plot$cds,
           fill = "#999999"
         ) +
-        ggtree::geom_range(
+        ggtranscript::geom_range(
           data = hg38_transcript_to_plot$utr,
           fill = "#333333",
           height = 0.25
@@ -88,7 +92,7 @@ visualise_transcript <- function(junID,
           aes(strand = hg38_transcript_to_plot$exons$strand %>% unique)
         ) + 
         ggtranscript::geom_junction(
-          data = df_intron_gr %>% as_tibble(),
+          data = junID_coordinates,
           color = range_color,
           ncp = 100, 
           junction.y.max = 0.5 
@@ -102,7 +106,7 @@ visualise_transcript <- function(junID,
         xlab(paste0("Genomic position (chr", hg38_transcript_to_plot$seqnames %>% unique ,")")) + 
         ylab("") +
         guides(color = guide_legend(title = "Junction type: ")) +
-        labs(title = paste0("Coordinates: '", df_intron_gr %>% as_tibble() %>% pull(ID) %>% unique, "'"))
+        labs(title = paste0("Coordinates: '", junID_coordinates %>% pull(ID) %>% unique, "'"))
       
       missplicing_plot %>%
         return()
@@ -229,7 +233,10 @@ visualise_multiple_transcripts <- function(junID,
   }
 }
 
-visualise_CLIP <- function(junID, transcript_ENS, geneName, junType) {
+visualise_CLIP <- function(junID, 
+                           transcript_ENS, 
+                           geneName, 
+                           junType) {
   
   # print(junID, " - ", transcript_ENS, " - ", geneName, " - ", junType)
   # junID <- "chr19:17621871-17623117:-"
@@ -254,8 +261,7 @@ visualise_CLIP <- function(junID, transcript_ENS, geneName, junType) {
   
   print(paste0("CLIP: ", junID, " ", transcript_ENS, " - ", (geneName )[1]))
   
-  junID_gr <- get_genomic_coordinates(junID) %>% 
-    GenomicRanges::GRanges()
+  junID_coordinates <- get_genomic_coordinates(junID)
   
   ## Connect to the CLIP data database and retrieve data from the current gene
   database_path <- file.path("./database/clip_data.sqlite")
@@ -269,7 +275,7 @@ visualise_CLIP <- function(junID, transcript_ENS, geneName, junType) {
   DBI::dbDisconnect(conn = con)
   
   ## Get overlaps
-  encori_overlaps <- GenomicRanges::findOverlaps(query = junID_gr,
+  encori_overlaps <- GenomicRanges::findOverlaps(query = junID_coordinates %>% GenomicRanges::GRanges(),
                                                  subject = db_clip_data_gr,
                                                  maxgap = 100,
                                                  type = "any")
@@ -279,23 +285,27 @@ visualise_CLIP <- function(junID, transcript_ENS, geneName, junType) {
     ## GET MANE TRANSCRIPT INFO
     hg38_transcript_to_plot <- get_transcript_to_plot( junID = junID, transcript_id = transcript_ENS)
     
+    
     ## PLOT USING TRANSCRIPT INFO
     if ( !is.null(hg38_transcript_to_plot) ) {
       
+      
       ## GET UNIQUE TRANSCRIPT SITES
-      RBP_CLIP_sites <- db_clip_data_gr[S4Vectors::subjectHits(encori_overlaps), ] %>% 
+      RBP_CLIP_sites_to_plot <- db_clip_data_gr[S4Vectors::subjectHits(encori_overlaps), ] %>% 
         as_tibble() %>%
-        dplyr::group_by(seqnames,start,end) %>%
+        dplyr::group_by(seqnames, start, end) %>%
         distinct(RBP, .keep_all = T) %>%
-        ungroup()
+        ungroup() %>% 
+        arrange(start)  %>% 
+        as_tibble(rownames = "index") %>% 
+        mutate(index = index %>% as.integer())
       
       
-      ## GET THE EXONS THAT WILL BE ZOOMED IN
-      index_first_exon <- which(abs(hg38_transcript_to_plot$exons$start - (junID_gr %>% GenomicRanges::end())) == min(abs(hg38_transcript_to_plot$exons$start-(junID_gr %>% GenomicRanges::end()))))
-      index_second_exon <- which(abs(hg38_transcript_to_plot$exons$end - (junID_gr %>% GenomicRanges::start())) == min((abs(hg38_transcript_to_plot$exons$end - (junID_gr %>% GenomicRanges::start())))[-index_first_exon]))
+      
+      exons_to_zoom <- get_exons_to_zoom(jun.type = junType, 
+                                         intron.to.zoom = junID_coordinates,
+                                         transcript.to.plot = hg38_transcript_to_plot)
 
-      exons_to_zoom <- rbind(hg38_transcript_to_plot$exons[index_first_exon,],
-                             hg38_transcript_to_plot$exons[index_second_exon,])
       exons_to_zoom <- exons_to_zoom %>% mutate(start = start-100, end=end+100)
       
       
@@ -321,7 +331,7 @@ visualise_CLIP <- function(junID, transcript_ENS, geneName, junType) {
             height = 0.25
             )     +
         geom_junction(
-          data = junID_gr %>% as_tibble(),
+          data = junID_coordinates %>% as_tibble(),
           colour = range_color,
           junction.y.max = 0.5 ,
           ncp = 200
@@ -338,43 +348,8 @@ visualise_CLIP <- function(junID, transcript_ENS, geneName, junType) {
         ylab(hg38_transcript_to_plot$exon$transcript_id %>% unique) +
         theme(axis.text.x = element_blank(),
               plot.margin = margin(t = 2, r = 2, b = -2, l = 2,unit = "pt") )
-      #+
-        #labs(subtitle = "Regulatory data suported by at least 10 CLIP experiments:")
-        
-        # geom_junction_label_repel(
-        #   data = junID_gr %>% as_tibble(),
-        #   aes(label = ID),
-        #   colour = range_color,
-        #   junction.y.max = 0.5,
-        #   segment.color = NA
-        # )  
-        # #ggforce::facet_zoom(xlim = c((min(exons_to_zoom$start)-100):(max(exons_to_zoom$end)+100))) +
-        # theme_light(base_size = 16) +
-        # theme(axis.text.y = element_text(angle = 90, hjust = 0.5),
-        #       legend.title = element_text(size = "12"),  
-        #       legend.text  = element_text(size = "11"), 
-        #       plot.caption = element_text(size = "12"),
-        #       plot.subtitle = element_text(size = "15"),
-        #       legend.position = "right") +
-        # guides(fill = guide_legend(ncol = 2))# +
-        #xlab(paste0(hg38_transcript_to_plot$exons$seqnames %>% unique() ," (hg38)")) + 
-        #ylab(paste0(geneName)) +
-        #labs(subtitle = "Displaying regulatory data suported by more than 10 CLIP experiments:",
-        #     caption = "*Regulatory data sourced from: (Li JH, et al. Nucleic Acids Res. 2014 Jan;42:D92-7) and\n(Zhou KR, Liu S, Li B, Liu SR, Zheng WJ, Cai L, et al. An encyclopedia of RNA interactomes in ENCORI).")
-      
-      #plot_double_annotated 
-      # Only annotated the zoomed panel
-      #plot_zoomed_annotated <- ggplot_build(plot_double_annotated)
-      #plot_zoomed_annotated$data[[4]][which( plot_zoomed_annotated$data[[4]][,"PANEL"] == 1 ),"alpha"] <- 0
-      #plot_zoomed_annotated <- ggplot_gtable(plot_zoomed_annotated)
-      
-      
+
      
-      RBP_CLIP_sites_to_plot <- RBP_CLIP_sites %>% 
-        arrange(start)  %>% 
-        as_tibble(rownames = "index") %>% 
-        mutate(index = index %>% as.integer())
-      
       clip_plot <- ggplot(data = RBP_CLIP_sites_to_plot) +
         geom_rect(
                   mapping = aes(xmin = start, xmax = end,
@@ -421,15 +396,29 @@ visualise_CLIP <- function(junID, transcript_ENS, geneName, junType) {
 }
 
 
-visualise_clinvar <- function(junID, clinvar_locus, database_name, junType, geneName) {
+visualise_clinvar <- function(junID, 
+                              clinvar_locus,
+                              
+                              CLNSIG_list,
+                              CLNVC_list,
+                              MC_list,
+                              
+                              database_name, 
+                              junType, 
+                              geneName) {
   
-  # clinvar_locus <- "chr1:154597977"
+  # clinvar_locus <- "chr10:87880439"
  
-  # junID = "chr1:155235308-155235680:-"
+  # junID = "chr10:87880439-87925512:-"
   # clinvar_locus = c("chr1:155235101,chr1:155235193,chr1:155235679,chr1:155235680,chr1:155237579,chr1:155239615")
   # database_name = "GTEx v8" 
-  # junType = "Novel Acceptor" 
-  # geneName = "GBA1"
+  # junType = "Annotated Intron" 
+  # geneName = "PTEN"
+  
+  message(CLNSIG_list)
+  message(CLNVC_list)
+  message(MC_list)
+  message(clinvar_locus)
   
   message(junID, " ", clinvar_locus, " ", database_name, " ", junType, " ", geneName)
   
@@ -443,44 +432,51 @@ visualise_clinvar <- function(junID, clinvar_locus, database_name, junType, gene
   }
   
   ## Get junction coordinates
-  junID_coordinates_gr <- get_genomic_coordinates(junID)%>% GenomicRanges::GRanges()
+  junID_coordinates <- get_genomic_coordinates(junID)
     
   ## Get clinvar coordinates
   clinvar_locus_coordinates <- get_genomic_coordinates(coordinates = clinvar_locus) 
   
   ## Get the transcript
-  transcript_info <- get_transcript_to_plot(junID = junID, geneName = geneName)
+  hg38_transcript_to_plot <- get_transcript_to_plot(junID = junID, geneName = geneName)
 
   ## Plot
-  if ( !is.null(transcript_info) ) {
+  if ( !is.null(hg38_transcript_to_plot) ) {
     
     ## GET THE EXONS THAT WILL BE ZOOMED IN
-    index_first_exon <- which(abs(transcript_info$exons$start - (junID_coordinates_gr %>% GenomicRanges::end())) == min(abs(transcript_info$exons$start-(junID_coordinates_gr %>% GenomicRanges::end()))))
-    index_second_exon <- which(abs(transcript_info$exons$end - (junID_coordinates_gr %>% GenomicRanges::start())) == min((abs(transcript_info$exons$end - (junID_coordinates_gr %>% GenomicRanges::start())))[-index_first_exon]))
+    # index_first_exon <- which(abs(hg38_transcript_to_plot$exons$start - (junID_coordinates_gr %>% GenomicRanges::end())) == min(abs(hg38_transcript_to_plot$exons$start-(junID_coordinates_gr %>% GenomicRanges::end()))))
+    # index_second_exon <- which(abs(hg38_transcript_to_plot$exons$end - (junID_coordinates_gr %>% GenomicRanges::start())) == min((abs(hg38_transcript_to_plot$exons$end - (junID_coordinates_gr %>% GenomicRanges::start())))[-index_first_exon]))
+    # 
+    # exons_to_zoom <- rbind(hg38_transcript_to_plot$exons[index_first_exon,],
+    #                        hg38_transcript_to_plot$exons[index_second_exon,])
+    # 
+    # junID_coordinates <- get_genomic_coordinates(junID)
     
-    exons_to_zoom <- rbind(transcript_info$exons[index_first_exon,],
-                           transcript_info$exons[index_second_exon,])
-    
+    exons_to_zoom <- get_exons_to_zoom(jun.type = junType, 
+                                       intron.to.zoom = junID_coordinates,
+                                       transcript.to.plot = hg38_transcript_to_plot)
+
     ## PLOT
-    plot_double_annotated <- transcript_info$exons %>%
+    plot_double_annotated <- hg38_transcript_to_plot$exons %>%
       ggplot(aes(
         xstart = start,
         xend = end,
-        y = transcript_info$exons$transcript_id %>% unique() 
+        y = hg38_transcript_to_plot$exons$transcript_id %>% unique() 
       )) +
       ggtranscript::geom_intron(
-        data = to_intron(transcript_info$exons, "transcript_id"),
-        aes(strand = transcript_info$exons$strand %>% unique)
+        data = to_intron(hg38_transcript_to_plot$exons, "transcript_id"),
+        aes(strand = hg38_transcript_to_plot$exons$strand %>% unique)
       ) +   
       geom_range(
-        data = transcript_info$cds,
+        data = hg38_transcript_to_plot$cds,
         fill = "#cccccc"
       ) +
       geom_range(
-        data = transcript_info$utr,
+        data = hg38_transcript_to_plot$utr,
         fill = "#333333",
         height = 0.25
       ) +
+      
       ggrepel::geom_label_repel(
         data = clinvar_locus_coordinates,
         aes(x = start, fontface = "bold",
@@ -491,20 +487,12 @@ visualise_clinvar <- function(junID, clinvar_locus, database_name, junType, gene
         direction = c("y")
       ) +
       
-      geom_junction(
-        data = junID_coordinates_gr %>% as_tibble(),
+      ggtranscript::geom_junction(
+        data = junID_coordinates,
         ncp = 100, 
         colour = range_color,
         junction.y.max = 0.5 
       ) +
-      # geom_junction_label_repel(
-      #   data = junID_coordinates_gr %>% as_tibble(),
-      #   aes(label = ID),
-      #   colour = range_color,
-      #   junction.y.max = 0.5,
-      #   segment.color = NA
-      # ) +
-      
       ggforce::facet_zoom(xlim = c((min(exons_to_zoom$start)-100):(max(exons_to_zoom$end)+100))) +
       theme_light(base_size = 16) +
       theme(axis.text.y = element_text(angle = 90, hjust = 0.5),
@@ -514,7 +502,7 @@ visualise_clinvar <- function(junID, clinvar_locus, database_name, junType, gene
             plot.subtitle = element_text(size = "15"),
             legend.position = "none") +
       #guides(fill = guide_legend(element_blank())) +
-      xlab(paste0("Genomic position (", transcript_info$exons$seqnames %>% unique() ,")")) + 
+      xlab(paste0("Genomic position (", hg38_transcript_to_plot$exons$seqnames %>% unique() ,")")) + 
       ylab(paste0(geneName)) +
       labs(#subtitle = "Displaying regulatory data from 'HepG2' and 'K562' cell lines:",
            caption = "*ClinVar data sourced from: (https://www.ncbi.nlm.nih.gov/variation/view).")

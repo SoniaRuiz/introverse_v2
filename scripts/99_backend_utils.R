@@ -215,176 +215,185 @@ create_BigWig_URL_list <- function() {
   library("recount3")
   library("tidyverse")
   
-  
-  human_projects <- recount3::available_projects(organism = "human")
-  
-  ## GET RECOUNT3 BIGWIG FILES
-  bigWig_URLs_recount3 <- map_df(c("tcga","gtex","sra"), function(source) {
+  if ( !file.exists(file.path(here::here(), "/dependencies/bigWig_URLs.rds")) ) {
     
-    recount_projects <- human_projects[human_projects$file_source == source, ] %>%
-      as_tibble()
+    human_projects <- recount3::available_projects(organism = "human")
     
-    # source = "sra"
-    if (source == "sra") {
-      recount_projects <- recount_projects %>%
-        filter(project == "SRP100948")
-    }
-    
-    
-    map_df(recount_projects$project, function(project_id) {
+    ## GET RECOUNT3 BIGWIG FILES
+    bigWig_URLs_recount3 <- map_df(c("tcga","gtex"), function(source) {
       
-      # project_id <- recount_projects$project[1]
-      message(project_id, "...")
+      recount_projects <- human_projects[human_projects$file_source == source, ] %>%
+        as_tibble()
       
-      if (source == "gtex") {
-        base_URL = "~/PROJECTS/splicing-accuracy-manuscript/results/splicing_1read/111/"
-      } else if (source == "sra") {
-        base_URL = "~/PROJECTS/recount3-database-project/results/SRP100948_1read_subsampleFALSE/111/"
-      } else {
-        base_URL = "~/PROJECTS/recount3-database-project/results/TCGA_1read_subsampleFALSE/111/"
+      # source = "sra"
+      if (source == "sra") {
+        recount_projects <- recount_projects %>%
+          filter(project == "SRP100948")
       }
       
-      # https://recount-opendata.s3.amazonaws.com/recount3/release
-      # https://recount-opendata.s3.amazonaws.com/recount3/release/human/data_sources/gtex/base_sums/EL/BLOOD_VESSEL/DY/gtex.base_sums.BLOOD_VESSEL_GTEX-14BMV-1226-SM-5TDDY.1.ALL.bw
-      metadata_path = file.path(base_URL, project_id, "base_data", paste0(project_id, "_samples_raw_metadata.rds"))
       
-      if ( file.exists(metadata_path) ) {
+      map_df(recount_projects$project, function(project_id) {
         
-        metadata <- readRDS(file = metadata_path) %>% as_tibble() %>%
-          rowwise() %>%
-          mutate(BigWigURL = str_replace_all(string = BigWigURL, pattern = "http://duffel.rail.bio/recount3/", replacement = "https://recount-opendata.s3.amazonaws.com/recount3/release/")) %>%
-          ungroup()
+        # project_id <- recount_projects$project[1]
+        message(project_id, "...")
         
         if (source == "gtex") {
-          
-          data.frame(project = project_id,
-                     cluster = metadata$gtex.smtsd,
-                     BigWigURL = metadata$BigWigURL) %>%
-            as_tibble()%>%
-            return()
-          
-        } else  if (source == "sra") {
-          
-          metadata_tidy <- metadata %>%
-            as_tibble() %>%
-            dplyr::select(external_id, 
-                          sra.experiment_title, 
-                          sra.sample_attributes, 
-                          all_mapped_reads = recount_qc.star.all_mapped_reads,
-                          BigWigURL) %>%
-            mutate(rn = row_number()) %>%
-            separate_rows(sra.sample_attributes, sep = "\\|\\s*") %>%
-            separate(sra.sample_attributes, into = c('col1', 'col2'), sep = ";;") %>% 
-            pivot_wider(names_from = col1, values_from = col2) %>% 
-            dplyr::select(-rn) %>%
-            as.data.frame() %>%
-            dplyr::select(-any_of("sample_id")) %>%
-            dplyr::rename(sample_id = external_id) %>%
-            mutate(diagnosis = str_remove_all(diagnosis,pattern = "'"))
-          
-          data.frame(project = project_id,
-                     cluster = metadata_tidy$diagnosis %>% as.character(),
-                     BigWigURL = metadata_tidy$BigWigURL) %>%
-            return()
+          base_URL = "~/PROJECTS/splicing-accuracy-manuscript/results/splicing_1read/111/"
+        } else if (source == "sra") {
+          base_URL = "~/PROJECTS/recount3-database-project/results/SRP100948_1read_subsampleFALSE/111/"
         } else {
+          base_URL = "~/PROJECTS/recount3-database-project/results/TCGA_1read_subsampleFALSE/111/"
+        }
+        
+        # https://recount-opendata.s3.amazonaws.com/recount3/release
+        # https://recount-opendata.s3.amazonaws.com/recount3/release/human/data_sources/gtex/base_sums/EL/BLOOD_VESSEL/DY/gtex.base_sums.BLOOD_VESSEL_GTEX-14BMV-1226-SM-5TDDY.1.ALL.bw
+        metadata_path = file.path(base_URL, project_id, "base_data", paste0(project_id, "_samples_raw_metadata.rds"))
+        
+        if ( file.exists(metadata_path) ) {
           
-          metadata <- metadata %>%
-            drop_na(tcga.cgc_sample_sample_type)
+          metadata <- readRDS(file = metadata_path) %>% as_tibble() %>%
+            rowwise() %>%
+            mutate(BigWigURL = str_replace_all(string = BigWigURL, pattern = "http://duffel.rail.bio/recount3/", replacement = "https://recount-opendata.s3.amazonaws.com/recount3/release/")) %>%
+            ungroup()
           
-          if ( metadata$tcga.cgc_sample_sample_type %>% unique %>% length() > 1) {
-            
-            matched_samples <- metadata %>%
-              dplyr::count(tcga.gdc_cases.case_id ) %>%
-              filter(n>=2) %>%
-              pull(tcga.gdc_cases.case_id)
-            
-            
-            metadata <- metadata %>%
-              filter(tcga.gdc_cases.case_id %in% matched_samples)
+          if (source == "gtex") {
             
             data.frame(project = project_id,
-                       cluster = metadata$tcga.cgc_sample_sample_type %>% as.character(),
+                       cluster = metadata$gtex.smtsd,
                        BigWigURL = metadata$BigWigURL) %>%
+              as_tibble()%>%
               return()
             
+          } else  if (source == "sra") {
+            
+            metadata_tidy <- metadata %>%
+              as_tibble() %>%
+              dplyr::select(external_id, 
+                            sra.experiment_title, 
+                            sra.sample_attributes, 
+                            all_mapped_reads = recount_qc.star.all_mapped_reads,
+                            BigWigURL) %>%
+              mutate(rn = row_number()) %>%
+              separate_rows(sra.sample_attributes, sep = "\\|\\s*") %>%
+              separate(sra.sample_attributes, into = c('col1', 'col2'), sep = ";;") %>% 
+              pivot_wider(names_from = col1, values_from = col2) %>% 
+              dplyr::select(-rn) %>%
+              as.data.frame() %>%
+              dplyr::select(-any_of("sample_id")) %>%
+              dplyr::rename(sample_id = external_id) %>%
+              mutate(diagnosis = str_remove_all(diagnosis,pattern = "'"))
+            
+            data.frame(project = project_id,
+                       cluster = metadata_tidy$diagnosis %>% as.character(),
+                       BigWigURL = metadata_tidy$BigWigURL) %>%
+              return()
           } else {
             
-            data.frame(project = project_id,
-                       cluster = metadata$tcga.cgc_sample_sample_type %>% as.character(),
-                       BigWigURL = metadata$BigWigURL) %>%
-              return()
+            metadata <- metadata %>%
+              drop_na(tcga.cgc_sample_sample_type)
+            
+            if ( metadata$tcga.cgc_sample_sample_type %>% unique %>% length() > 1) {
+              
+              matched_samples <- metadata %>%
+                dplyr::count(tcga.gdc_cases.case_id ) %>%
+                filter(n>=2) %>%
+                pull(tcga.gdc_cases.case_id)
+              
+              
+              metadata <- metadata %>%
+                filter(tcga.gdc_cases.case_id %in% matched_samples)
+              
+              data.frame(project = project_id,
+                         cluster = metadata$tcga.cgc_sample_sample_type %>% as.character(),
+                         BigWigURL = metadata$BigWigURL) %>%
+                return()
+              
+            } else {
+              
+              data.frame(project = project_id,
+                         cluster = metadata$tcga.cgc_sample_sample_type %>% as.character(),
+                         BigWigURL = metadata$BigWigURL) %>%
+                return()
+            }
+            
+            
           }
-          
-          
+        } else {
+          return(NULL)
         }
-      } else {
-        return(NULL)
-      }
-      
+        
+      })
     })
-  })
-  
-  
-  ## GET ENCODE BIGWIG FILES
-  ENCODE_metadata_path = file.path("~/PROJECTS/ENCODE_Metadata_Extraction/results/metadata_shRNA_bigWig_samples.tsv")
-  ENCODE_metadata <- read.delim(file = ENCODE_metadata_path) %>% as_tibble()
-  bigWig_URLs_ENCODE <- map_df(ENCODE_metadata$target_gene %>% unique, function(RBP) {
     
-    message(RBP, "...")
-    # RBP = (ENCODE_metadata$target_gene %>% unique)[1]
-    data.frame(project = RBP,
-               cluster = ENCODE_metadata %>%
-                 filter(target_gene == RBP) %>%
-                 distinct(sample_id, .keep_all=T) %>%
-                 pull(experiment_type) %>%
-                 str_to_title(),
-               BigWigURL = ENCODE_metadata %>%
-                 filter(target_gene == RBP) %>%
-                 distinct(sample_id, .keep_all=T) %>%
-                 mutate(URL = paste0("https://www.encodeproject.org/files/",sample_id,"/@@download/",sample_id,".bigWig")) %>%
-                 dplyr::pull(URL),
-               BigWig_type = ENCODE_metadata %>%
-                 filter(target_gene == RBP) %>%
-                 distinct(sample_id, .keep_all=T) %>%
-                 mutate(output_type = str_remove_all(string = output_type, pattern = " strand signal of unique reads")) %>%
-                 dplyr::pull(output_type) ) %>%
-      as_tibble()%>%
-      return()
-  })
-  
-  
-  ## JOIN BIGWIG DATASETS
-  bigWig_URLs = plyr::rbind.fill(bigWig_URLs_recount3 %>% filter(cluster != "" ) %>% drop_na(), bigWig_URLs_ENCODE) %>% as_tibble()
-  
-  
-  ## SAVE DATA
-  saveRDS(object = bigWig_URLs, file = "~/POST_DOC/introverse_v2/dependencies/bigWig_URLs.rds")
+    
+    ## GET ENCODE BIGWIG FILES
+    ENCODE_metadata_path = file.path("~/PROJECTS/ENCODE_Metadata_Extraction/results/metadata_shRNA_bigWig_samples.tsv")
+    ENCODE_metadata <- read.delim(file = ENCODE_metadata_path) %>% as_tibble()
+    bigWig_URLs_ENCODE <- map_df(ENCODE_metadata$target_gene %>% unique, function(RBP) {
+      
+      message(RBP, "...")
+      # RBP = (ENCODE_metadata$target_gene %>% unique)[1]
+      data.frame(project = RBP,
+                 cluster = ENCODE_metadata %>%
+                   filter(target_gene == RBP) %>%
+                   distinct(sample_id, .keep_all=T) %>%
+                   pull(experiment_type) %>%
+                   str_to_title(),
+                 BigWigURL = ENCODE_metadata %>%
+                   filter(target_gene == RBP) %>%
+                   distinct(sample_id, .keep_all=T) %>%
+                   mutate(URL = paste0("https://www.encodeproject.org/files/",sample_id,"/@@download/",sample_id,".bigWig")) %>%
+                   dplyr::pull(URL),
+                 BigWig_type = ENCODE_metadata %>%
+                   filter(target_gene == RBP) %>%
+                   distinct(sample_id, .keep_all=T) %>%
+                   mutate(output_type = str_remove_all(string = output_type, pattern = " strand signal of unique reads")) %>%
+                   dplyr::pull(output_type) ) %>%
+        as_tibble()%>%
+        return()
+    })
+    
+    
+    ## JOIN BIGWIG DATASETS
+    bigWig_URLs = plyr::rbind.fill(bigWig_URLs_recount3 %>% filter(cluster != "" ) %>% drop_na(), bigWig_URLs_ENCODE) %>% as_tibble()
+    
+    
+    ## SAVE DATA
+    saveRDS(object = bigWig_URLs, file = "~/POST_DOC/introverse_v2/dependencies/bigWig_URLs.rds")
+    
+  } else {
+    
+    bigWig_URLs <- readRDS(file = file.path(here::here(), "/dependencies/bigWig_URLs.rds"))
+  }
   
   
   ## STORE BIGWIG DATA IN DATABASE
   # bigWig_URLs <- readRDS(file = file.path(here::here(), "dependencies/bigWig_URLs.rds")) %>% filter(str_detect(BigWigURL, pattern = "encode", negate = T))
   # 
-  saveRDS(object = plyr::rbind.fill(bigWig_URLs, bigWig_URLs_ENCODE),
-          file = "/mnt/POST_DOC/introverse_v2/dependencies/bigWig_URLs.rds")
+  # saveRDS(object = plyr::rbind.fill(bigWig_URLs, bigWig_URLs_ENCODE),
+  #         file = "/mnt/POST_DOC/introverse_v2/dependencies/bigWig_URLs.rds")
   
   # database_bigwig_data <- readRDS(file = "dependencies/bigWig_URLs.rds") %>%
-  #   dplyr::rename(bigwig = BigWigURL) 
-  # database_path <- file.path(here::here(), "database/bigwig.sqlite")
-  # 
-  # con <- DBI::dbConnect(RSQLite::SQLite(), database_path)
-  # 
-  # DBI::dbWriteTable(conn = con,
-  #                   name = "bigwig",
-  #                   value = database_bigwig_data,
-  #                   overwrite = T)
+  #   dplyr::rename(bigwig = BigWigURL)
   
-  #DBI::dbDisconnect(conn = con)
+  database_path <- file.path(here::here(), "database/bigwig.sqlite")
+
+  con <- DBI::dbConnect(RSQLite::SQLite(), database_path)
+
+  DBI::dbWriteTable(conn = con,
+                    name = "bigwig",
+                    value = bigWig_URLs,
+                    overwrite = T)
+  
+  DBI::dbDisconnect(conn = con)
 }
 
 
 #########################################
 ## UTILS TO TRANSCRIPT VISUALISATION
 #########################################
+
+
 
 get_transcript_to_plot <- function(junID = NULL,
                                    geneName = NULL,
@@ -473,18 +482,38 @@ get_transcript_to_plot <- function(junID = NULL,
 } 
 
 
-visualise_empty_plot <- function(text = NULL) {
+get_exons_to_zoom <- function(jun.type, 
+                              intron.to.zoom,
+                              transcript.to.plot) {
   
-  if (is.null(text)) {
-    text = paste0("There are no protein-coding transcript structures available for the selected gene.")
+  if ((jun.type == "Annotated Intron"  && intron.to.zoom$strand == "+") || 
+      (jun.type == "Novel Acceptor" && intron.to.zoom$strand == "+") || 
+      (jun.type == "Novel Donor" && intron.to.zoom$strand == "-")) {
+    
+    ## GET THE EXONS THAT WILL BE ZOOMED IN
+    index_first_exon <- which(abs(transcript.to.plot$exons$end - intron.to.zoom$start) == 
+                                min(abs(transcript.to.plot$exons$end - intron.to.zoom$start)))
+    
+    index_second_exon <- which((abs(transcript.to.plot$exons$start - intron.to.zoom$end) == 
+                                  min(abs(transcript.to.plot$exons$start - intron.to.zoom$end)[-c(1:(index_first_exon))])))
+    
+  } else {
+    
+    ## GET THE EXONS THAT WILL BE ZOOMED IN
+    index_first_exon <- which(abs(transcript.to.plot$exons$start - intron.to.zoom$end) == 
+                                min(abs(transcript.to.plot$exons$start - intron.to.zoom$end)))
+    index_second_exon <- which((abs(transcript.to.plot$exons$end - intron.to.zoom$start) == 
+                                  min(abs(transcript.to.plot$exons$end - intron.to.zoom$start)[c(1:(index_first_exon-1))])))
   }
   
-  ggplot() +
-    theme_void() +
-    geom_text(aes(x = 0, y = 0, label=text), size = 6) %>%
-    return()
+  
+  exons_to_zoom <- rbind(transcript.to.plot$exons[index_first_exon,],
+                         transcript.to.plot$exons[index_second_exon,])
+  
+  return(exons_to_zoom)
   
 }
+
 
 
 get_genomic_coordinates <- function(coordinates) {
@@ -538,6 +567,20 @@ get_genomic_coordinates <- function(coordinates) {
   })
 }
 
+
+
+visualise_empty_plot <- function(text = NULL) {
+  
+  if (is.null(text)) {
+    text = paste0("There are no protein-coding transcript structures available for the selected gene.")
+  }
+  
+  ggplot() +
+    theme_void() +
+    geom_text(aes(x = 0, y = 0, label=text), size = 6) %>%
+    return()
+  
+}
 ###############################################
 ## CALLS 
 ###############################################
