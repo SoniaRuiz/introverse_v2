@@ -7,15 +7,37 @@ library(ggtranscript)
 
 database_folder <- base::file.path("database")
 
-database_equivalences <- data.frame(index = c(1,2,3),#,4,5),
-                                    key = c("tcga","gtex", "encode_sh"),# "ad", "pd" ),
+database_equivalences <- data.frame(index = c(1,2,3,4,5,6),
+                                    key = c("tcga",
+                                            "gtex", 
+                                            "encode_sh", 
+                                            "encode_crispr",
+                                            "pd",
+                                            "ad"),
                                     name_title = c("The Cancer Genome Atlas Program (TCGA) database",
                                                    "The Genotype Tissue Expression v8 (GTEx) database",
-                                                   "ENCODE shRNA database"),
-                                    name = c("TCGA","GTEx v8", "ENCODE shRNA"),# "AD/Control", "PD/Control"),
-                                    sqlite_file = c("TCGA_1read_subsampleFALSE.sqlite", "splicing_1read.sqlite", 
-                                                    "ENCODE_SR_1read.sqlite"),# "SRP100948_1read_subsampleFALSE.sqlite", "SRP058181_1read_subsampleFALSE.sqlite" ),
-                                    project_types = c("cancer types","body sites","RBP knockdown experiments"))#, "AD samples" , "PD samples" ))
+                                                   "ENCODE shRNA database",
+                                                   "ENCODE CRISPR database",
+                                                   "Parkinson's Disease",
+                                                   "Alzheimer's Disease"),
+                                    name = c("TCGA",
+                                             "GTEx v8", 
+                                             "ENCODE shRNA", 
+                                             "ENCODE CRISPR", 
+                                             "PD/Control",
+                                             "AD/Control"),
+                                    sqlite_file = c("TCGA_1read_subsampleFALSE.sqlite", 
+                                                    "splicing_1read.sqlite", 
+                                                    "ENCODE_SR_1read_shRNA.sqlite",
+                                                    "ENCODE_SR_1read_crispr.sqlite", 
+                                                    "SRP058181_1read_subsampleFALSE.sqlite",
+                                                    "SRP181886_1read_subsampleFALSE.sqlite"),
+                                    project_types = c("cancer types",
+                                                      "body sites",
+                                                      "RBP knockdown experiments",
+                                                      "RBP CRISPR knockdown experiments", 
+                                                      "PD samples",
+                                                      "AD samples"))#, "AD samples" , "PD samples" ))
                                                          
 
 #######################################
@@ -42,7 +64,9 @@ set_database_project_dropdown <- function(database_key) {
     cluster_labels <- paste0(cluster_labels, " (",cluster_keys,")")
   } else if (database_key == "encode_sh") {
     cluster_labels <- paste0("shRNA knockdown of ", cluster_keys %>% str_replace_all(pattern = "_", replacement = " "))
-  } else {
+  } else if (database_key == "encode_crispr") {
+    cluster_labels <- paste0("CRISPR editing of ", cluster_keys %>% str_replace_all(pattern = "_", replacement = " "))
+  }else {
     cluster_labels <- cluster_keys %>% str_replace_all(pattern = "_", replacement = " ")  
   }
   
@@ -94,9 +118,15 @@ set_database_sample_type_dropdown <- function(database_key, project_id) {
   if ( any(str_detect(string = str_to_lower(cluster_data$cluster_label), pattern = "case")) ) {
     index_case <- which(str_detect(string = str_to_lower(cluster_data$cluster_label),
                                    pattern = "case"))
+    
+    if (project_id == "encode_sh") {
+      cluster_label = "shRNA knockdown"
+    } else {
+      cluster_label = "CRISPR editing"
+    }
     cluster_data$cluster_label[index_case] <- str_replace(string = cluster_data$cluster_label[index_case] %>% str_to_lower(),
                                                           pattern = "case",
-                                                          replacement = "shRNA knockdown")
+                                                          replacement = cluster_label)
   }
   
   cluster_keys <- cluster_data$cluster

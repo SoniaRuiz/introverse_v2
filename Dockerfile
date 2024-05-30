@@ -81,11 +81,18 @@ RUN R -e 'install.packages(c("shinybusy"), repos="http://cran.rstudio.com/", dep
 RUN R -e 'install.packages(c("tidytext"), repos="http://cran.rstudio.com/", dependencies = T)'
 RUN R -e 'install.packages(c("here"), repos="http://cran.rstudio.com/", dependencies = T)'
 
+RUN R -e 'remove.packages("ggplot2")'
+RUN R -e 'install.packages("https://cran.r-project.org/src/contrib/Archive/ggplot2/ggplot2_3.4.0.tar.gz", repos=NULL, type="source")'
+
+RUN R -e 'remove.packages("ggrepel")'
+RUN R -e 'install.packages("https://cran.r-project.org/src/contrib/Archive/ggrepel/ggrepel_0.9.1.tar.gz", repos=NULL, type="source")'
+
 ####### COPY Rprofile #########
 
 COPY Rprofile.site /usr/lib/R/etc/
 RUN mkdir /root/introverse_v2
 COPY . /root/introverse_v2
+RUN mkdir /root/introverse_v2/database
 
 ####### EXPOSE #########
 

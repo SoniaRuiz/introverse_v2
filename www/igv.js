@@ -49,9 +49,9 @@ function loadBigWigFiles(bigwigCategories, bigwigURLs, bigwigTypes) {
     if (URLs.length < 50) {
       max_tracks = URLs.length;
     } else if (uniqueCategories.length == 1 && URLs.length > 50) {
-      max_tracks = 50;
+      max_tracks = 20;
     } else if (uniqueCategories.length > 1 && ((URLs.length/uniqueCategories.length) > 100)) {
-      max_tracks = 50 * uniqueCategories.length;
+      max_tracks = 20 * uniqueCategories.length;
     } else {
       max_tracks = URLs.length;
     }
@@ -91,7 +91,7 @@ function loadBigWigFiles(bigwigCategories, bigwigURLs, bigwigTypes) {
     }
     
     
-    local_bigwig_track.name = local_bigwig_track.name + " (" + local_bigwig_track.tracks.length + " samples)";
+    local_bigwig_track.name = local_bigwig_track.name + " (displaying " + local_bigwig_track.tracks.length + " overlaid BigWig samples)";
     reference.tracks.push(local_bigwig_track);
     console.log(URLs.length);
   }

@@ -59,8 +59,8 @@ ui <- navbarPage("IntroVerse 2.0",
                           
                           fluidPage(
                             fluidRow(
-                              column(width = 3),
-                              column(width = 6, 
+                              column(width = 2),
+                              column(width = 8, 
                                      
                                      #div(align = "center",),
                                      div(
@@ -86,7 +86,7 @@ ui <- navbarPage("IntroVerse 2.0",
                                        br()
                                      )
                               ),
-                              column(width = 3)
+                              column(width = 2)
                             )
                           )
                  ),
@@ -113,23 +113,23 @@ ui <- navbarPage("IntroVerse 2.0",
                                                  #                  value = "chr16:86478133-86508654:-")
                                                  shiny::selectInput(inputId = "chr_tab1",
                                                                     label = "Chr",
-                                                                    selected = 19,
+                                                                    selected = 4,
                                                                     choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,"X","Y"),
                                                                     multiple = F),
                                                  shiny::selectInput(inputId = "strand_tab1",
                                                                     label = "Strand",
                                                                     choices = c("+", "-"),
-                                                                    selected = "+",
+                                                                    selected = "-",
                                                                     multiple = F)
                               ),
                               shiny::splitLayout(id="start_end_tab1",
                                                  
                                                  numericInput(inputId = "start_tab1",
                                                               label = "Start",
-                                                              value = 4491836),
+                                                              value = 89835693),
                                                  numericInput(inputId = "end_tab1",
                                                               label = "End",
-                                                              value = 4492014)                   
+                                                              value = 89836742)                   
                               ),
                               hr(),
                               #shiny::splitLayout(id="splitLayout_nearby_tab1",
@@ -154,9 +154,11 @@ ui <- navbarPage("IntroVerse 2.0",
                                                                     choices = c("All" = "all",
                                                                                 "The Cancer Genome Atlas Program (TCGA)" = "tcga",
                                                                                 "The Genotype-Tissue Expression (GTEx) v8" = "gtex",
-                                                                                #"AD/Control" = "ad",
-                                                                                #"PD/Control" = "pd",
-                                                                                "ENCODE shRNA" = "encode_sh"),
+                                                                                
+                                                                                "ENCODE CRISPR" = "encode_crispr",
+                                                                                "ENCODE shRNA" = "encode_sh",
+                                                                                "PD/Control" = "pd",
+                                                                                "AD/Control" = "ad"),
                                                                     multiple = F),
                               
                                                 shiny::selectInput(inputId = "database_project_selection_tab1",
@@ -224,7 +226,7 @@ ui <- navbarPage("IntroVerse 2.0",
                                                plotOutput("modalVisualiseTranscript_tab1", width = "auto", height = "70vh")),
                               
                               shinyBS::bsModal(id = "modalVisualiseCLIP_tab1", 
-                                               title = "Visualising RBP-RNA regulatory data suported by at least 10 CLIP-seq experiments.",
+                                               title = "Visualising top RBP-RNA regulatory data supported by the highest number of CLIP-seq experiments.",
                                                
                                                trigger = NULL,
                                                size = "large",
@@ -253,7 +255,7 @@ ui <- navbarPage("IntroVerse 2.0",
                                                  position = "full-page"
                                                ),
                                                
-                                               plotOutput("modalVisualiseClinVar_tab1", width = "auto", height = "65vh")),
+                                               uiOutput("modalVisualiseClinVar_tab1", width = "auto", height = "65vh")),
                               
                               shinyBS::bsModal(id = "modalVisualiseMORE_tab1", 
                                                title = "More information about the splicing event selected",
@@ -286,9 +288,12 @@ ui <- navbarPage("IntroVerse 2.0",
                                                  selected = "tcga",
                                                  choices = c("The Cancer Genome Atlas Program (TCGA)" = "tcga",
                                                              "The Genotype-Tissue Expression (GTEx) v8" = "gtex",
-                                                             #"AD/Control" = "ad",
-                                                             #"PD/Control" = "pd",
-                                                             "ENCODE shRNA" = "encode_sh"),
+                                                            
+                                                             "ENCODE CRISPR" = "encode_crispr",
+                                                             "ENCODE shRNA" = "encode_sh",
+                                                             
+                                                             "PD/Control" = "pd",
+                                                             "AD/Control" = "ad"),
                                                  selectize=T,
                                                  multiple = F),
                               
@@ -359,9 +364,13 @@ ui <- navbarPage("IntroVerse 2.0",
                                                                            selected = "tcga",
                                                                            choices = c("The Cancer Genome Atlas Program (TCGA)" = "tcga",
                                                                                        "The Genotype-Tissue Expression (GTEx) v8" = "gtex",
-                                                                                       #"AD/Control" = "ad",
-                                                                                       #"PD/Control" = "pd",
-                                                                                       "ENCODE shRNA" = "encode_sh"),
+                                                                                       
+                                                                                       "ENCODE CRISPR" = "encode_crispr",
+                                                                                       "ENCODE shRNA" = "encode_sh",
+                                                                                       
+                                                                                       "AD/Control" = "ad",
+                                                                                       "PD/Control" = "pd"
+                                                                           ),
                                                                            width = '100%',
                                                                            multiple = F),
                                                         shiny::selectInput(inputId = "igv_browser_database_project_selection_tab1",
@@ -692,6 +701,7 @@ server <- function(input, output, session) {
   ## TRANSCRIPT VISUALISATION ----------------------------------------------------
   
   visualiseTranscriptPlot <- function() {
+    
     if (input$transcriptMANE_tab1) {
       transcript_plot <- visualise_transcript(junID = str_replace_all(string = input$junID_tab1, pattern = "%20", replacement = " "),
                                               transcript_ENS = str_replace_all(string = input$transcriptENS_tab1, pattern = "%20", replacement = " "),
@@ -741,11 +751,11 @@ server <- function(input, output, session) {
   
   visualiseClinVarPlot <- function() {
     clinvar_plot <- visualise_clinvar(junID = str_replace_all(string = input$junID_tab1, pattern = "%20", replacement = " "),
-                                      clinvar_locus = str_replace_all(string = input$clinvarlocus_tab1, pattern = "%20", replacement = " "),
+                                      #clinvar_locus = str_replace_all(string = input$clinvarlocus_tab1, pattern = "%20", replacement = " "),
                                       
-                                      CLNSIG_list = str_replace_all(string = input$CLNSIG_list_tab1, pattern = "%20", replacement = " "),
-                                      CLNVC_list = str_replace_all(string = input$CLNVC_list_tab1, pattern = "%20", replacement = " "),
-                                      MC_list = str_replace_all(string = input$MC_list_tab1, pattern = "%20", replacement = " "),
+                                      #CLNSIG_list = str_replace_all(string = input$CLNSIG_list_tab1, pattern = "%20", replacement = " "),
+                                      #CLNVC_list = str_replace_all(string = input$CLNVC_list_tab1, pattern = "%20", replacement = " "),
+                                      #MC_list = str_replace_all(string = input$MC_list_tab1, pattern = "%20", replacement = " "),
                                       
                                       geneName = str_replace_all(string = input$geneName_tab1, pattern = "%20", replacement = " "),
                                       database_name = str_replace_all(string = input$databaseName_tab1, pattern = "%20", replacement = " "),
@@ -754,12 +764,31 @@ server <- function(input, output, session) {
     return(clinvar_plot)
   }
   
-  output$modalVisualiseClinVar_tab1 <- renderPlot({
+  output$modalVisualiseClinVar_tab1 <- renderUI({
     shinybusy::show_spinner(spin_id = "modal_spinner")
     shinyjs::runjs(code = '$("#modalVisualiseClinVar_tab1 > img").addClass("d-none");')
     shinyjs::runjs(code = '$("#modalVisualiseClinVar_tab1 > img").remove();')
-    visualiseClinVarPlot()
-  }, res = 72)
+    
+    tagList(
+      
+      renderPlot({
+        visualiseClinVarPlot()
+      }),
+      br(),
+      DT::renderDataTable(expr = DT::datatable(data = get_database_clinvar(get_genomic_coordinates(str_replace_all(string = input$junID_tab1, pattern = "%20", replacement = " "))),
+                                               rownames = F, 
+                                               extensions = c('Buttons', 'Responsive'),
+                                                                         options = list(
+                                                                           pageLength = 10,
+                                                                           dom = 'Bfrtip',
+                                                                           buttons = c('copy', 'csv', 'excel')
+                                                                           ))
+      )
+    )
+    
+    
+    
+  })#, res = 72)
   
   
   ## 'MORE...' VISUALISATION ----------------------------------------------------
@@ -834,7 +863,10 @@ server <- function(input, output, session) {
   
     div(
       h1("Splicing events found in the genomic region ",
-         paste0("[chr",input$chr_tab1, ":", (input$start_tab1 %>% as.integer() - input$database_nearby_tab1 %>% as.integer()), " - ", (input$end_tab1 %>% as.integer() + input$database_nearby_tab1 %>% as.integer()), ":",input$strand_tab1,"]")),
+         paste0("[chr",input$chr_tab1, ":", 
+                (input$start_tab1 %>% as.integer() - input$database_nearby_tab1 %>% as.integer()), " - ", 
+                (input$end_tab1 %>% as.integer() + input$database_nearby_tab1 %>% as.integer()), ":",
+                input$strand_tab1,"]")),
       br(),
       h4(strong("This region has been calculated after expanding the upstream and downstream search window by ", input$database_nearby_tab1, " base pairs.")),
       p("All splicing events that overlap with the indicated genomic region across the selected database, sample cluster and sample type are shown below."),

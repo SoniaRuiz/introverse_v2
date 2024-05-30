@@ -10,14 +10,14 @@ query_database_nearby <- function(chr, start, end, strand,
   
   
   
-  #chr = 10
-  #start = 87880439
-  #end = 87925512
-  #strand = "+"
-  #databases_name = "encode"
-  #project_id = "TARDBP"
+  #chr = 4
+  #start = 89835693
+  #end = 89836742
+  #strand = "-"
+  #databases_name = "encode_sh"
+  #project_id = "AATF"
   #table_name = "case"
-  #nearby_window = 0
+  #nearby_window = 100000
   # 
   #   chr = 10
   #   start = 87932343
@@ -28,9 +28,17 @@ query_database_nearby <- function(chr, start, end, strand,
   #   table_name = "case"
   #   nearby_window = 100000
   
+  #   chr = 4
+  #   start = 89835693
+  #   end = 89836742
+  #   strand = "-"
+  #   databases_name = "encode"
+  #   project_id = "TARDBP"
+  #   table_name = "case"
+  #   nearby_window = 100000
   
   
-  message("'", chr, ":", start, "-", end, ":", strand, "' # ", nearby_window, " - " , databases_name, " - ", project_id, " - ", table_name)
+  message("query_database_nearby: '", chr, ":", start, "-", end, ":", strand, "' # ", nearby_window, " - " , databases_name, " - ", project_id, " - ", table_name)
   
   if ( any(databases_name == "all") ){
     databases_sqlite_list <- database_equivalences$sqlite_file
@@ -69,7 +77,9 @@ query_database_nearby <- function(chr, start, end, strand,
     master_novel_information <- DBI::dbGetQuery(con, query) %>%
       dplyr::rename(junction_type = novel_type) 
     master_novel_information <- master_novel_information %>%
-      left_join(y = DBI::dbGetQuery(con, paste0("SELECT ref_junID, transcript_id FROM 'intron' WHERE ref_junID IN ('", paste(master_novel_information$ref_junID %>% unique, collapse="','"), "')")),
+      left_join(y = DBI::dbGetQuery(con, paste0("SELECT ref_junID, transcript_id 
+                                                FROM 'intron' 
+                                                WHERE ref_junID IN ('", paste(master_novel_information$ref_junID %>% unique, collapse="','"), "')")),
                 by = "ref_junID")
     
     master_information <- plyr::rbind.fill(master_intron_information, master_novel_information) %>%
@@ -103,11 +113,13 @@ query_database_nearby <- function(chr, start, end, strand,
               
               message(project_id, " - ", cluster)
               
-              query <- paste0("SELECT ref_junID, novel_junID FROM '", cluster, "_", project_id, "_misspliced'") 
+              query <- paste0("SELECT ref_junID, novel_junID 
+                              FROM '", cluster, "_", project_id, "_misspliced'") 
               misspliced <- DBI::dbGetQuery(con, query) %>% 
                 inner_join(y = master_information, by = c("ref_junID", "novel_junID"))
               
-              query <- paste0("SELECT DISTINCT ref_junID FROM '", cluster, "_", project_id, "_nevermisspliced'")
+              query <- paste0("SELECT DISTINCT ref_junID 
+                              FROM '", cluster, "_", project_id, "_nevermisspliced'")
               nevermisspliced <- DBI::dbGetQuery(con, query) %>% 
                 inner_join(y = master_information, by = "ref_junID")
               
@@ -119,15 +131,16 @@ query_database_nearby <- function(chr, start, end, strand,
           
         } else {
           
-          query <- paste0("SELECT ref_junID, novel_junID FROM '", table_name, "_", project_id, "_misspliced'") 
+          query <- paste0("SELECT ref_junID, novel_junID 
+                          FROM '", table_name, "_", project_id, "_misspliced'") 
           misspliced <- DBI::dbGetQuery(con, query) %>% 
-            filter(ref_junID %in% master_information$ref_junID | 
-                     novel_junID %in% master_information$novel_junID) 
+            filter(ref_junID %in% master_information$ref_junID | novel_junID %in% master_information$novel_junID) 
           
-          query <- paste0("SELECT DISTINCT ref_junID FROM '", table_name, "_", project_id, "_nevermisspliced'")
+          query <- paste0("SELECT DISTINCT ref_junID 
+                          FROM '", table_name, "_", project_id, "_nevermisspliced'")
           nevermisspliced <- DBI::dbGetQuery(con, query) %>%  
             as_tibble() %>%
-            filter(ref_junID %in% c(master_information %>% filter(junction_type == "annotated_intron") %>% distinct(ref_junID) %>% pull(ref_junID)))
+            filter(ref_junID %in% c(master_information %>% filter(junction_type == "annotated_intron") %>% distinct(ref_junID, coordinates) %>% pull(ref_junID)))
           
           db_misspliced_clusters <- plyr::rbind.fill(misspliced, nevermisspliced) %>% distinct(ref_junID, novel_junID, .keep_all = T)
           
@@ -204,6 +217,40 @@ query_database <- function(chr, start, end, strand,
                            project_id = NULL,
                            table_name = NULL) {
   
+  
+  message("query_database: '", chr, ":", start, "-", end, ":", strand, "' // ", databases_name, " - ", project_id, " - ", table_name)
+  # chr = 4
+  # start = 89822389
+  # end = 89828142
+  # strand = "-"
+  # databases_name = "encode_sh"
+  # project_id = "AATF"
+  # table_name = "case"
+  
+  # chr = 4
+  # start = 89835693
+  # end = 89836961
+  # strand = "-"
+  # databases_name = "all"
+  # project_id = "all"
+  # table_name = "all"
+  
+  # chr = 10
+  # start = 87743642
+  # end = 87754767
+  # strand = "+"
+  # databases_name = "all"
+  # project_id = "all"
+  # table_name = "all"
+  
+  # chr = 10
+  # start = 87862643
+  # end = 87925512
+  # strand = "+"
+  # databases_name = "gtex"
+  # project_id = "BLOOD"
+  # table_name = "Cells - EBV-transformed lymphocytes"
+  
   # chr = 10
   # start = 87880439
   # end = 87925512
@@ -211,14 +258,7 @@ query_database <- function(chr, start, end, strand,
   # databases_name = "gtex"
   # project_id = "ADIPOSE_TISSUE"
   # table_name = "Adipose - Subcutaneous"
-  
-  # chr = 19
-  # start = 4491836
-  # end = 4492014
-  # strand ="+"
-  # databases_name = "tcga"
-  # project_id = "LAML"
-  # table_name = "Primary blood derived cancer - peripheral blood"
+
   
   # chr = 19
   # start = 4501318
@@ -227,6 +267,7 @@ query_database <- function(chr, start, end, strand,
   # databases_name = "all"
   # project_id = "all"
   # table_name = "all"
+  
   # chr = 19
   # start = 4491836
   # end = 4492014
@@ -234,6 +275,10 @@ query_database <- function(chr, start, end, strand,
   # databases_name = "gtexv8"
   # project_id = "ADIPOSE_TISSUE"
   # table_name = "Adipose - Subcutaneous"
+  # databases_name = "tcga"
+  # project_id = "LAML"
+  # table_name = "Primary blood derived cancer - peripheral blood"
+  
   #   
   # chr = 1
   # start = 154626001
@@ -248,7 +293,7 @@ query_database <- function(chr, start, end, strand,
   # end = 108896864
   # strand = "+"
   
-  #"chr10:87862643-87925512:+"
+ 
   # chr = 10
   # start = 87862643
   # end = 87925512
@@ -340,6 +385,7 @@ query_database <- function(chr, start, end, strand,
         query <- paste0("SELECT * FROM 'metadata' WHERE SRA_project='", project_id, "' AND cluster='",table_name,"'")
       }
     }
+    
     db_metadata <- DBI::dbGetQuery(con, query)
     
     
@@ -348,7 +394,6 @@ query_database <- function(chr, start, end, strand,
     print(jxn_of_interest_coordinates)
     
     ## Query the global database information
-    
     
     ## Retrieve the junction type
     query <- paste0("SELECT * 
@@ -361,7 +406,7 @@ query_database <- function(chr, start, end, strand,
       
       query <- paste0("SELECT * 
                       FROM 'novel' 
-                      WHERE novel_coordinates='", jxn_of_interest_coordinates, "'")
+                      WHERE novel_coordinates='", jxn_of_interest_coordinates, "' LIMIT 1")
       master_information <- DBI::dbGetQuery(con, query)
       
       ## It is a novel junction
@@ -515,7 +560,7 @@ query_database <- function(chr, start, end, strand,
   
   
   
-  }
+}
 
 
 setup_UI_details_section <- function(query_results, back_button = NULL) {
@@ -525,18 +570,18 @@ setup_UI_details_section <- function(query_results, back_button = NULL) {
   v <- list()
   i <- 1
   
-  common_jxn_info <- query_results %>% distinct(coordinates, transcript_id, .keep_all = T) %>% drop_na(ref_junID)
+  jxn_info <- query_results %>% distinct(coordinates, transcript_id, novel_type, .keep_all = T) %>% drop_na(ref_junID)
   
   
   # Set UI data
   
-  distance_and_global_info <- set_UI_distance_information(jxn_info = common_jxn_info)
+  distance_and_global_info <- set_UI_distance_information(jxn_info = jxn_info)
   
   transcript_span_tag <- set_UI_transcript_information(query_results)
   
   encori_span_tag <- set_UI_clip_information(query_results)
   
-  clinvar_span_tag <- set_UI_clinvar_information(jxn_info = common_jxn_info)
+  clinvar_span_tag <- set_UI_clinvar_information(jxn_info = jxn_info)
   
   
   if ( !is.null(back_button) && back_button != "" && back_button %>% as.integer() > 0) {
@@ -550,29 +595,22 @@ setup_UI_details_section <- function(query_results, back_button = NULL) {
   v[[i]] <- div(
     back_button,
     ## Set hidden info
-    p(id = "phastCons17_5ss", style = "display:none;", common_jxn_info %>% drop_na(mean_phastCons17way5ss_100) %>% pull(mean_phastCons17way5ss_100) %>% unique),
-    p(id = "phastCons17_3ss", style = "display:none;", common_jxn_info %>% drop_na(mean_phastCons17way3ss_100) %>% pull(mean_phastCons17way3ss_100) %>% unique),
-    p(id = "CDTS_5ss", style = "display:none;", common_jxn_info %>% drop_na(mean_CDTS5ss_100) %>% pull(mean_CDTS5ss_100) %>% unique),
-    p(id = "CDTS_3ss", style = "display:none;", common_jxn_info %>% drop_na(mean_CDTS3ss_100) %>% pull(mean_CDTS3ss_100) %>% unique),
-    p(id = "MES_5ss", style = "display:none;", common_jxn_info %>% drop_na(mes5ss) %>% pull(mes5ss) %>% unique),
-    p(id = "MES_3ss", style = "display:none;", common_jxn_info %>% drop_na(mes3ss) %>% pull(mes3ss) %>% unique),
-    p(id = "donor_sequence", style = "display:none;", common_jxn_info %>% drop_na(donor_sequence) %>% pull(donor_sequence) %>% unique),
-    p(id = "acceptor_sequence", style = "display:none;", common_jxn_info %>% drop_na(acceptor_sequence) %>% pull(acceptor_sequence) %>% unique),
-    
-
-    
-    p(id = "CLNSIG_list", style = "display:none;", common_jxn_info %>% drop_na(CLNSIG_list) %>% pull(CLNSIG_list)),
-    p(id = "CLNVC_list", style = "display:none;", common_jxn_info %>% drop_na(CLNVC_list) %>% pull(CLNVC_list)),
-    p(id = "MC_list", style = "display:none;", common_jxn_info %>% drop_na(MC_list) %>% pull(MC_list)),
-    
+    p(id = "phastCons17_5ss", style = "display:none;", jxn_info %>% drop_na(mean_phastCons17way5ss_100) %>% pull(mean_phastCons17way5ss_100) %>% unique),
+    p(id = "phastCons17_3ss", style = "display:none;", jxn_info %>% drop_na(mean_phastCons17way3ss_100) %>% pull(mean_phastCons17way3ss_100) %>% unique),
+    p(id = "CDTS_5ss", style = "display:none;", jxn_info %>% drop_na(mean_CDTS5ss_100) %>% pull(mean_CDTS5ss_100) %>% unique),
+    p(id = "CDTS_3ss", style = "display:none;", jxn_info %>% drop_na(mean_CDTS3ss_100) %>% pull(mean_CDTS3ss_100) %>% unique),
+    p(id = "MES_5ss", style = "display:none;", jxn_info %>% drop_na(mes5ss) %>% pull(mes5ss) %>% unique),
+    p(id = "MES_3ss", style = "display:none;", jxn_info %>% drop_na(mes3ss) %>% pull(mes3ss) %>% unique),
+    p(id = "donor_sequence", style = "display:none;", jxn_info %>% drop_na(donor_sequence) %>% pull(donor_sequence) %>% unique),
+    p(id = "acceptor_sequence", style = "display:none;", jxn_info %>% drop_na(acceptor_sequence) %>% pull(acceptor_sequence) %>% unique),
     
     ## Set visible info
     h3("Junction Details"),
     hr(),
-    p(strong("Coordinates:"), span(common_jxn_info$coordinates %>% unique, id = "span_junID")),
-    p(strong("Length (in bp):"), span(common_jxn_info %>% drop_na(length) %>% pull(length) %>% unique)),
+    p(strong("Coordinates:"), span(jxn_info$coordinates %>% unique, id = "span_junID")),
+    p(strong("Length (in bp):"), span(jxn_info %>% drop_na(length) %>% pull(length) %>% unique)),
     p(strong("Junction type:", 
-             span(str_to_title(string = str_replace(string = common_jxn_info$junID_type %>% unique, pattern = "_", replacement = " ")), 
+             span(str_to_title(string = str_replace(string = jxn_info$junID_type %>% unique, pattern = "_", replacement = " ")), 
                   style = paste0("color:", distance_and_global_info$color[1] %>% unique), 
                   id="span_junType")),
       " (Ensembl v111)."),
@@ -580,8 +618,9 @@ setup_UI_details_section <- function(query_results, back_button = NULL) {
     p(strong(distance_and_global_info$distance_label[1], 
              span(distance_and_global_info$distance_info[1], 
                   style = paste0("color:", distance_and_global_info$color[2] %>% unique)))), ## Distance
-    p(strong("Gene:"), span(paste(common_jxn_info$gene_name %>% unique, collapse = " "), id = "span_geneName")),
-    p(strong("Transcript visualisation:"), HTML('&nbsp;'), transcript_span_tag, id="transcript_list"),
+    p(strong("Gene:"), span(paste(jxn_info$gene_name %>% unique, collapse = " "), id = "span_geneName")),
+    #p(strong("Transcript visualisation:"), HTML('&nbsp;'), transcript_span_tag, id="transcript_list"),
+    transcript_span_tag,
     encori_span_tag,
     clinvar_span_tag,
     p(tags$a(href = "#", onclick = "
@@ -606,6 +645,7 @@ setup_UI_details_section <- function(query_results, back_button = NULL) {
 }
 
 
+
 setup_UI_results_section <- function(query_results) {
   
   
@@ -619,7 +659,7 @@ setup_UI_results_section <- function(query_results) {
   for ( j in 1:(length(databases_queried)) ) {
     
     # j = 1
-    # j = 2
+    # j = 4
     
     local_query_results <- query_results %>% 
       filter(database == databases_queried[j]) %>% 
@@ -692,13 +732,11 @@ setup_UI_results_section <- function(query_results) {
           dplyr::select(-c(novel_coordinates, 
                            novel_n_individuals,
                            novel_sum_counts,
-                           novel_type)) %>%
-          distinct(database,project,cluster,ref_junID,.keep_all = T)
+                           novel_type,
+                           novel_junID)) %>%
+          distinct(database, project, cluster, ref_junID, .keep_all = T)
         
-      } else {
-        local_query_results <- local_query_results %>%
-          mutate(ref_type = paste0(ref_type, " splice sites")) 
-      }
+      } 
       
     } else {
       ## If it is a novel junction, we remove data corresponding to the annotated reference intron
@@ -716,6 +754,7 @@ setup_UI_results_section <- function(query_results) {
     
     rename_column_lookup <- c("Intron Coordinates" = "ref_coordinates",
                               "Novel Junction Coordinates" = "novel_coordinates",
+                              "Mis-spliced?"="ref_type",
                               "Intron seen in no. samples" = "ref_n_individuals",
                               "Intron Total Reads" = "ref_sum_counts",
                               "Mis-spliced At" = "ref_type",
@@ -723,7 +762,7 @@ setup_UI_results_section <- function(query_results) {
                               "MSR Acceptor" = "MSR_A",
                               "Novel Junction Num. Samples" = "novel_n_individuals",
                               "Novel Junction Total Reads" = "novel_sum_counts",
-                              "Junction Type" = "novel_type",
+                              "Novel Junction Type" = "novel_type",
                               "Sample Group" = "cluster",
                               "Gene Name" = "gene_name",
                               "Gene TPM" = "gene_tpm",
@@ -731,7 +770,8 @@ setup_UI_results_section <- function(query_results) {
                               "Database" = "database")
     
     final_query_results <- local_query_results %>%
-      mutate(cluster = ifelse(cluster == "case", "shRNA knockdown", cluster)) %>%
+      mutate(cluster = ifelse(cluster == "case" & database=="ENCODE shRNA", "shRNA knockdown", 
+                              ifelse(cluster == "case" & database=="ENCODE CRISPR", "CRISPR knockdown", cluster))) %>%
       dplyr::relocate(gene_tpm, .before = gene_name) %>%
       
       mutate_at(vars(one_of('novel_type')), ~str_to_sentence(str_replace(string = .x, pattern = "_", replacement = " "))) %>%
@@ -744,14 +784,17 @@ setup_UI_results_section <- function(query_results) {
                                            "u2_intron", "protein_coding", "cluster_type", "junID_type","transcript_ENS",
                                            "novel_donor_sequence","novel_acceptor_sequence",
                                            "mean_phastCons17way5ss_100","mean_phastCons17way3ss_100",
-                                           "mean_CDTS5ss_100","mean_CDTS3ss_100", "clinvar","ref_type", "clinvar_locus",
+                                           "mean_CDTS5ss_100","mean_CDTS3ss_100", "clinvar", "clinvar_locus",
                                            "donor_sequence", "acceptor_sequence", "length","database","gene_name","MANE",
                                            "transcript_biotype", 
                                            "CLNSIG_list",
                                            "CLNVC_list",
                                            "MC_list",
                                            "mes5ss","mes3ss"))))  %>% 
-      
+      mutate(ref_type = ifelse(ref_type == "never", "No", 
+                               ifelse(ref_type == "maybe", "Potentially - Novel junctions paired with this intron did not pass the QC.",
+                                      ifelse(ref_type == "donor", "Yes (donor splice site)",
+                                             ifelse(ref_type == "acceptor", "Yes (acceptor splice site)", "Yes (both splice sites)"))))) %>%
       dplyr::rename(dplyr::any_of(rename_column_lookup)) 
     
     

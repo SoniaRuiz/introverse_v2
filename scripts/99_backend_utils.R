@@ -102,6 +102,259 @@ get_database_transcripts <- function(con, gene_name) {
 
 
 
+get_database_clinvar <- function(jxn_info) {
+  
+  ## Connect to the CLIP data database and retrieve data from the current gene
+  database_path <- file.path("./database/clinvar.sqlite")
+  con <- DBI::dbConnect(RSQLite::SQLite(), database_path)
+  query <- paste0("SELECT * FROM 'clinvar' WHERE seqnames=",str_remove(string = jxn_info %>% distinct(seqnames) %>% pull(), pattern = "chr"))
+  db_clip_data_gr <- DBI::dbGetQuery(con, query) %>%
+    GenomicRanges::GRanges()
+  DBI::dbDisconnect(conn = con)
+  
+  ## Find overlaps between clinvar mutations and mis-splicing ratios
+  overlaps <- GenomicRanges::findOverlaps(query = db_clip_data_gr,
+                                          subject = jxn_info %>% mutate(seqnames = str_remove(string = seqnames, pattern = "chr")) %>% GenomicRanges::GRanges(),
+                                          
+                                          type = "any")
+  
+  db_clip_data_gr[S4Vectors::queryHits(overlaps), ] %>%
+    as_tibble() %>%
+    dplyr::relocate(ID) %>%
+    return()
+}
+
+
+
+create_indexes_database <- function() {
+  
+  ################################
+  ## SPLICING DATABASES
+  ################################
+ 
+  
+  for (con in conn_list) {
+    
+    ## INTRON TABLE -----------------------------------------------------------------
+    
+    ## verify indexes exist on 'intron' master table
+    query <- paste0("SELECT * FROM 'sqlite_master' 
+                  WHERE tbl_name = 'intron'
+                  AND name = 'index_intron_coord'")
+    
+    
+    if ( nrow(dbGetQuery(conn = con, query)) == 0) {
+      
+      message("Creating index 'index_intron_coord'...")
+      query <- paste0("CREATE UNIQUE INDEX 'index_intron_coord' ON 'intron'(ref_coordinates)");
+      res <- DBI::dbSendQuery(conn = con, statement = query)
+      DBI::dbClearResult(res)
+    }
+    
+    
+    
+    ## NOVEL TABLE -----------------------------------------------------------------
+    
+    
+    ## verify indexes exist on 'novel' master table
+    query <- paste0("SELECT * FROM 'sqlite_master' WHERE tbl_name = 'novel' AND name = 'index_novel'")
+    
+    if ( nrow(dbGetQuery(conn = con, query)) == 0 ) {
+      
+      message("Creating index 'index_novel'...")
+      query <- paste0("CREATE UNIQUE INDEX 'index_novel' ON 'novel'(ref_junID,novel_junID)");
+      res <- DBI::dbSendQuery(conn = con, statement = query)
+      DBI::dbClearResult(res)
+      
+    }
+    
+    
+    ## verify indexes exist on 'novel' master table
+    query <- paste0("SELECT * FROM 'sqlite_master' WHERE tbl_name = 'novel' AND name = 'index_novel_coord'")
+    
+    if ( nrow(dbGetQuery(conn = con, query)) == 0 ) {
+      
+      message("Creating index 'index_novel_coord'...")
+      query <- paste0("CREATE UNIQUE INDEX 'index_novel_coord' ON 'novel'(novel_coordinates)");
+      res <- DBI::dbSendQuery(conn = con, statement = query)
+      DBI::dbClearResult(res)
+      
+    }
+    
+    
+    ## TRANSCRIPT TABLE -----------------------------------------------------------------
+    
+    query <- paste0("SELECT * FROM 'sqlite_master' WHERE tbl_name = 'transcript' AND name = 'index_transcript_id'")
+    
+    if ( nrow(dbGetQuery(conn = con, query)) == 0 ) {
+      
+      message("Creating index 'index_transcript_id'...")
+      query <- paste0("CREATE UNIQUE INDEX 'index_transcript_id' ON 'transcript'(id)");
+      res <- DBI::dbSendQuery(conn = con, statement = query)
+      DBI::dbClearResult(res)
+      
+    }
+    
+    
+    query <- paste0("SELECT * FROM 'sqlite_master' WHERE tbl_name = 'transcript' AND name = 'index_transcript_ensembl_id'")
+    
+    if ( nrow(dbGetQuery(conn = con, query)) == 0 ) {
+      
+      message("Creating index 'index_transcript_ensembl_id'...")
+      query <- paste0("CREATE UNIQUE INDEX 'index_transcript_ensembl_id' ON 'transcript'(transcript_id)");
+      res <- DBI::dbSendQuery(conn = con, statement = query)
+      DBI::dbClearResult(res)
+      
+    }
+    
+    
+    ## GENE TABLE -----------------------------------------------------------------
+    
+    ## verify indexes exist on 'gene' master tableg
+    query <- paste0("SELECT * FROM 'sqlite_master' WHERE tbl_name = 'gene' AND name = 'index_gene_id'")
+    
+    if ( nrow(dbGetQuery(conn = con, query)) == 0 ) {
+      
+      message("Creating index 'index_gene_id'...")
+      query <- paste0("CREATE UNIQUE INDEX 'index_gene_id' ON 'gene'(id)");
+      res <- DBI::dbSendQuery(conn = con, statement = query)
+      DBI::dbClearResult(res)
+      
+    }
+    
+    ## verify indexes exist on 'gene' master tableg
+    query <- paste0("SELECT * FROM 'sqlite_master' WHERE tbl_name = 'gene' AND name = 'index_gene_ensembl_id'")
+    
+    if ( nrow(dbGetQuery(conn = con, query)) == 0 ) {
+      
+      message("Creating index 'index_gene_ensembl_id'...")
+      query <- paste0("CREATE UNIQUE INDEX 'index_gene_ensembl_id' ON 'gene'(gene_id)");
+      res <- DBI::dbSendQuery(conn = con, statement = query)
+      DBI::dbClearResult(res)
+      
+    }
+  }
+  
+  
+  
+  ################################
+  ## OTHER DATABASES
+  ################################
+  
+  
+  ## bigwig DATABASE ---------------------------------------------------------------
+  
+  database_path <- file.path("./database/bigwig.sqlite")
+  con <- DBI::dbConnect(RSQLite::SQLite(), database_path)
+  query <- paste0("SELECT * FROM 'sqlite_master' 
+                  WHERE tbl_name = 'bigwig'
+                  AND name = 'index_bigwig'")
+  
+  if ( nrow(dbGetQuery(conn = con, query)) == 0) {
+    
+    message("Creating index 'index_bigwig'...")
+    query <- paste0("CREATE UNIQUE INDEX 'index_bigwig' ON 'bigwig'(project, cluster, BigWigURL )");
+    res <- DBI::dbSendQuery(conn = con, statement = query)
+    DBI::dbClearResult(res)
+  }
+  DBI::dbDisconnect(conn = con)
+  
+  ## clinvar DATABASE --------------------------------------------------------------
+  
+  database_path <- file.path("./database/clinvar.sqlite")
+  con <- DBI::dbConnect(RSQLite::SQLite(), database_path)
+  query <- paste0("SELECT * FROM 'sqlite_master' 
+                  WHERE tbl_name = 'clinvar'
+                  AND name = 'index_clinvar'")
+  
+  if ( nrow(dbGetQuery(conn = con, query)) == 0) {
+    
+    message("Creating index 'index_clinvar'...")
+    query <- paste0("CREATE UNIQUE INDEX 'index_clinvar' ON 'clinvar'(seqnames,start,end)");
+    res <- DBI::dbSendQuery(conn = con, statement = query)
+    DBI::dbClearResult(res)
+  }
+  DBI::dbDisconnect(conn = con)
+  
+  ## CLIP_ENCORI DATABASE ----------------------------------------------------------
+  
+  database_path <- file.path("./database/clip_data.sqlite")
+  con <- DBI::dbConnect(RSQLite::SQLite(), database_path)
+  tables <- DBI::dbListTables(conn = con)
+  
+  for (table in tables) {
+    # table = tables[1]
+    # table = "MATR3"
+    
+    query <- paste0("SELECT * FROM 'sqlite_master' WHERE tbl_name = '",table,"' AND name = 'index_",table,"_coord'")
+    if ( nrow(dbGetQuery(conn = con, query)) == 0 ) {
+      
+      table_data <- dbGetQuery(conn = con, paste0("SELECT * FROM '",table,"'") )
+    
+      if (table_data %>% dplyr::count(seqnames,start,end,RBP) %>% filter(n>1) %>% nrow() == 0) {
+
+        message(table, " - creating index...")
+        query <- paste0("CREATE UNIQUE INDEX 'index_",table,"_coord' ON '",table,"'(seqnames,start,end,RBP)");
+        res <- DBI::dbSendQuery(conn = con, statement = query)
+        DBI::dbClearResult(res)
+        
+      }else {
+        message(table, " - index already created!")
+      }
+    } else {
+      message(table, " - index already created!")
+    }
+    
+  }
+  
+  DBI::dbDisconnect(conn = con)
+  
+  ## hg38 DATABASE -----------------------------------------------------------------
+  
+  database_path <- file.path("./database/hg38_transcripts.sqlite")
+  con <- DBI::dbConnect(RSQLite::SQLite(), database_path)
+  query <- paste0("SELECT * FROM 'sqlite_master' 
+                  WHERE tbl_name = 'hg38_transcripts'
+                  AND name = 'index_hg38_transcripts'")
+  
+  if ( nrow(dbGetQuery(conn = con, query)) == 0) {
+    
+    message("Creating index 'index_hg38_transcripts'...")
+    query <- paste0("CREATE UNIQUE INDEX 'index_hg38_transcripts' ON 'hg38_transcripts'(gene_name,transcript_id,transcript_biotype)");
+    res <- DBI::dbSendQuery(conn = con, statement = query)
+    DBI::dbClearResult(res)
+  }
+  
+  DBI::dbDisconnect(conn = con)
+}
+
+
+
+create_clinvar_database <- function() {
+  
+  clinvar_data <- readRDS(file = "./dependencies/clinvar_splicing_pathogenic.rds") %>%
+    dplyr::select(-c(ORIGIN, RS, AF_EXAC, CLNVI, AF_ESP, AF_TGP, CLNDISDBINCL, CLNDNINCL,
+                     DBVARID, SCI, SCIDISDB, SCIDN, SCIREVSTAT, ONC, ONCDISDB, ONCDN, ONCREVSTAT, QUAL,FILTER)) %>%
+    dplyr::relocate(end, .after = "start") %>%
+    dplyr::relocate(ID) %>% 
+    distinct(seqnames,start,end, .keep_all = T)
+  
+
+  database_path <- file.path(here::here(), "database/clinvar.sqlite")
+  con <- DBI::dbConnect(RSQLite::SQLite(), database_path)
+  DBI::dbWriteTable(conn = con,
+                    name = "clinvar",
+                    value = clinvar_data,
+                    overwrite = T)
+  query <- paste0("CREATE UNIQUE INDEX 'index_clinvar' ON 'clinvar'(seqnames,start,end)");
+  res <- DBI::dbSendQuery(conn = con, statement = query)
+  DBI::dbClearResult(res)
+  DBI::dbDisconnect(conn = con)
+  
+}
+
+
+
 create_CLIP_database_tables <- function() {
   
   # database_genes <- get_database_genes(database_equivalences$sqlite_file) %>% unlist %>% unname %>% unique %>% sort()
@@ -220,15 +473,17 @@ create_BigWig_URL_list <- function() {
     human_projects <- recount3::available_projects(organism = "human")
     
     ## GET RECOUNT3 BIGWIG FILES
-    bigWig_URLs_recount3 <- map_df(c("tcga","gtex"), function(source) {
+    bigWig_URLs_recount3 <- map_df(c("tcga","gtex","sra"), function(source) {
+      
+      # source = "sra"
       
       recount_projects <- human_projects[human_projects$file_source == source, ] %>%
         as_tibble()
       
-      # source = "sra"
+      
       if (source == "sra") {
         recount_projects <- recount_projects %>%
-          filter(project == "SRP100948")
+          filter(project %in% c("SRP058181","SRP181886"))
       }
       
       
@@ -240,20 +495,24 @@ create_BigWig_URL_list <- function() {
         if (source == "gtex") {
           base_URL = "~/PROJECTS/splicing-accuracy-manuscript/results/splicing_1read/111/"
         } else if (source == "sra") {
-          base_URL = "~/PROJECTS/recount3-database-project/results/SRP100948_1read_subsampleFALSE/111/"
+          base_URL = paste0("~/PROJECTS/recount3-database-project/results/",project_id,"_1read_subsampleFALSE/111/")
+          
         } else {
           base_URL = "~/PROJECTS/recount3-database-project/results/TCGA_1read_subsampleFALSE/111/"
         }
         
         # https://recount-opendata.s3.amazonaws.com/recount3/release
         # https://recount-opendata.s3.amazonaws.com/recount3/release/human/data_sources/gtex/base_sums/EL/BLOOD_VESSEL/DY/gtex.base_sums.BLOOD_VESSEL_GTEX-14BMV-1226-SM-5TDDY.1.ALL.bw
+        
         metadata_path = file.path(base_URL, project_id, "base_data", paste0(project_id, "_samples_raw_metadata.rds"))
         
         if ( file.exists(metadata_path) ) {
           
           metadata <- readRDS(file = metadata_path) %>% as_tibble() %>%
             rowwise() %>%
-            mutate(BigWigURL = str_replace_all(string = BigWigURL, pattern = "http://duffel.rail.bio/recount3/", replacement = "https://recount-opendata.s3.amazonaws.com/recount3/release/")) %>%
+            mutate(BigWigURL = str_replace_all(string = BigWigURL, 
+                                               pattern = "http://duffel.rail.bio/recount3/", 
+                                               replacement = "https://recount-opendata.s3.amazonaws.com/recount3/release/")) %>%
             ungroup()
           
           if (source == "gtex") {
@@ -264,7 +523,7 @@ create_BigWig_URL_list <- function() {
               as_tibble()%>%
               return()
             
-          } else  if (source == "sra") {
+          } else if (source == "sra") {
             
             metadata_tidy <- metadata %>%
               as_tibble() %>%
@@ -280,13 +539,26 @@ create_BigWig_URL_list <- function() {
               dplyr::select(-rn) %>%
               as.data.frame() %>%
               dplyr::select(-any_of("sample_id")) %>%
-              dplyr::rename(sample_id = external_id) %>%
-              mutate(diagnosis = str_remove_all(diagnosis,pattern = "'"))
+              dplyr::rename(sample_id = external_id) 
+            
+            if (project_id == "SRP181886") {
+              
+              metadata_tidy <- metadata_tidy %>%
+                mutate(diagnosis = str_remove_all(diagnosis,pattern = "'"))
+              
+            } else {
+              metadata_tidy <- metadata_tidy %>%
+                mutate(diagnosis = ifelse( test = str_detect(sra.experiment_title, pattern="P"),
+                                           yes = "Parkinsons Disease",
+                                           no = "Control"))
+            }
+              
             
             data.frame(project = project_id,
                        cluster = metadata_tidy$diagnosis %>% as.character(),
                        BigWigURL = metadata_tidy$BigWigURL) %>%
               return()
+            
           } else {
             
             metadata <- metadata %>%
@@ -327,31 +599,37 @@ create_BigWig_URL_list <- function() {
     
     
     ## GET ENCODE BIGWIG FILES
-    ENCODE_metadata_path = file.path("~/PROJECTS/ENCODE_Metadata_Extraction/results/metadata_shRNA_bigWig_samples.tsv")
-    ENCODE_metadata <- read.delim(file = ENCODE_metadata_path) %>% as_tibble()
-    bigWig_URLs_ENCODE <- map_df(ENCODE_metadata$target_gene %>% unique, function(RBP) {
+    bigWig_URLs_ENCODE <- map_df(c("crispr", "shRNA"), function(encode_proyect) {
       
-      message(RBP, "...")
-      # RBP = (ENCODE_metadata$target_gene %>% unique)[1]
-      data.frame(project = RBP,
-                 cluster = ENCODE_metadata %>%
-                   filter(target_gene == RBP) %>%
-                   distinct(sample_id, .keep_all=T) %>%
-                   pull(experiment_type) %>%
-                   str_to_title(),
-                 BigWigURL = ENCODE_metadata %>%
-                   filter(target_gene == RBP) %>%
-                   distinct(sample_id, .keep_all=T) %>%
-                   mutate(URL = paste0("https://www.encodeproject.org/files/",sample_id,"/@@download/",sample_id,".bigWig")) %>%
-                   dplyr::pull(URL),
-                 BigWig_type = ENCODE_metadata %>%
-                   filter(target_gene == RBP) %>%
-                   distinct(sample_id, .keep_all=T) %>%
-                   mutate(output_type = str_remove_all(string = output_type, pattern = " strand signal of unique reads")) %>%
-                   dplyr::pull(output_type) ) %>%
-        as_tibble()%>%
-        return()
+      # encode_proyect = "crispr"
+      ENCODE_metadata_path = file.path(paste0("~/PROJECTS/splicing-accuracy-manuscript/ENCODE_SR/ENCODE_Splicing_Analysis/metadata/metadata_",encode_proyect,"_samples.tsv"))
+      ENCODE_metadata <- read.delim(file = ENCODE_metadata_path) %>% as_tibble()
+      
+      map_df(ENCODE_metadata$target_gene %>% unique, function(RBP) {
+        
+        message(RBP, "...")
+        # RBP = (ENCODE_metadata$target_gene %>% unique)[1]
+        data.frame(project = RBP,
+                   cluster = ENCODE_metadata %>%
+                     filter(target_gene == RBP) %>%
+                     distinct(sample_id, .keep_all=T) %>%
+                     pull(experiment_type) %>%
+                     str_to_title(),
+                   BigWigURL = ENCODE_metadata %>%
+                     filter(target_gene == RBP) %>%
+                     distinct(sample_id, .keep_all=T) %>%
+                     mutate(URL = paste0("https://www.encodeproject.org/files/",sample_id,"/@@download/",sample_id,".bigWig")) %>%
+                     dplyr::pull(URL),
+                   BigWig_type = ENCODE_metadata %>%
+                     filter(target_gene == RBP) %>%
+                     distinct(sample_id, .keep_all=T) %>%
+                     mutate(output_type = str_remove_all(string = output_type, pattern = " strand signal of unique reads")) %>%
+                     dplyr::pull(output_type) ) %>%
+          as_tibble()%>%
+          return()
+      })
     })
+
     
     
     ## JOIN BIGWIG DATASETS
@@ -397,32 +675,70 @@ create_BigWig_URL_list <- function() {
 
 get_transcript_to_plot <- function(junID = NULL,
                                    geneName = NULL,
-                                   transcript_id = NULL,
+                                   transcript.id = NULL,
+                                   jxn.type,
                                    multiple = F) {
   
+  # junID = "chr1:155235312-155235462:-"
+  # geneName = NULL
+  # transcript.id = "ENST00000368373"
+  # jxn.type = "Novel Donor"
+  # multiple = F
   
-  ## Connect to the 'hg38 transcripts' data database and retrieve data from the current gene
+  # junID = "chr19:4491836-4492014:+"
+  # geneName = "ENST00000616600"
+  # transcript.id = "ENST00000616600"
+  # jxn.type = "Novel Acceptor"
+  # multiple = F
+  
+  message("'get_transcript_to_plot': '", junID, "' '", geneName, "' '", transcript.id, "' '", jxn.type, "' '", multiple)
+  
+  ## Connect to the 'hg38 transcripts' data database and retrieve data from the current gene/transcript
   database_path <- file.path(here::here(), "/database/hg38_transcripts.sqlite")
   con <- DBI::dbConnect(RSQLite::SQLite(), database_path)
-  if ( !is.null(geneName) && !is.null(transcript_id) ) {
-    query <- paste0("SELECT * FROM 'hg38_transcripts' WHERE gene_name='", geneName, "' AND transcript_id!='", transcript_id, "'")  
+  if ( !is.null(geneName) && !is.null(transcript.id) ) {
+    query <- paste0("SELECT * FROM 'hg38_transcripts' WHERE gene_name='", geneName, "' AND transcript_id!='", transcript.id, "'")  
   } else if ( !is.null(geneName) ) {
     query <- paste0("SELECT * FROM 'hg38_transcripts' WHERE gene_name='", geneName, "'")  
   } else {
-    query <- paste0("SELECT * FROM 'hg38_transcripts' WHERE transcript_id='", transcript_id, "'")  
+    query <- paste0("SELECT * FROM 'hg38_transcripts' WHERE transcript_id='", transcript.id, "'")  
   }
   db_transcripts_data <- DBI::dbGetQuery(con, query) 
   DBI::dbDisconnect(conn = con)
   
   
+  
   if ( !is.null(junID) ) {
-    junction_to_plot <- get_genomic_coordinates(junID)  
-    db_transcripts_data <- db_transcripts_data %>%
-      filter(transcript_id %in% (db_transcripts_data %>%
-                                   filter(type == "transcript") %>%
-                                   filter(start < junction_to_plot$start,
-                                          end > junction_to_plot$end) %>%
-                                   pull(transcript_id)))
+    
+    junction_to_plot <- get_genomic_coordinates(junID) 
+    
+
+    if ( jxn.type == "Annotated Intron" ) {
+      
+      db_transcripts_data <- db_transcripts_data %>%
+        filter(transcript_id %in% (ggtranscript::to_intron(db_transcripts_data %>% filter(type == "exon"), "transcript_id") %>%
+                                     mutate(end = end - 1,
+                                            start = start + 1) %>%
+                                     filter(end == junction_to_plot$end |
+                                            start == junction_to_plot$start) %>%
+                                     pull(transcript_id)))
+    } else {
+      
+      ## To avoid plotting novel junctions with a novel splice site very far away from the limits of the transcript
+      db_transcripts_data <- db_transcripts_data %>%
+        filter(transcript_id %in% (db_transcripts_data %>%
+                                     filter(type == "transcript",
+                                            start < junction_to_plot$start |
+                                            end > junction_to_plot$end) %>%
+                                     pull(transcript_id))) %>%
+        filter(transcript_id %in% (ggtranscript::to_intron(db_transcripts_data %>% filter(type == "exon"), "transcript_id") %>%
+                                     mutate(end = end - 1,
+                                            start = start + 1) %>%
+                                     filter(end == junction_to_plot$end | 
+                                              start == junction_to_plot$start) %>%
+                                     pull(transcript_id)))
+    }
+    
   }
   
   
@@ -486,24 +802,40 @@ get_exons_to_zoom <- function(jun.type,
                               intron.to.zoom,
                               transcript.to.plot) {
   
-  if ((jun.type == "Annotated Intron"  && intron.to.zoom$strand == "+") || 
-      (jun.type == "Novel Acceptor" && intron.to.zoom$strand == "+") || 
-      (jun.type == "Novel Donor" && intron.to.zoom$strand == "-")) {
+  #message("get_exons_to_zoom: ",jun.type, " - ", intron.to.zoom, " - ", transcript.to.plot)
+  
+  if ( (jun.type == "Novel Donor" && (transcript.to.plot$exons$strand %>% unique) == "+") | 
+       (jun.type == "Novel Acceptor" && (transcript.to.plot$exons$strand %>% unique) == "-") ) {
     
-    ## GET THE EXONS THAT WILL BE ZOOMED IN
+    index_first_exon <- which(abs(transcript.to.plot$exons$start - intron.to.zoom$end) == 
+                                min(abs(transcript.to.plot$exons$start - intron.to.zoom$end)))
+    
+    index_second_exon <- which((abs(transcript.to.plot$exons$end - intron.to.zoom$start) == 
+                                  min(abs(transcript.to.plot$exons$end - intron.to.zoom$start)[c(1:(index_first_exon-1))])))
+    
+  } else if ( (jun.type == "Novel Acceptor" && (transcript.to.plot$exons$strand %>% unique) == "+") | 
+              (jun.type == "Novel Donor" && (transcript.to.plot$exons$strand %>% unique) == "-") ) {
+    
     index_first_exon <- which(abs(transcript.to.plot$exons$end - intron.to.zoom$start) == 
                                 min(abs(transcript.to.plot$exons$end - intron.to.zoom$start)))
     
-    index_second_exon <- which((abs(transcript.to.plot$exons$start - intron.to.zoom$end) == 
-                                  min(abs(transcript.to.plot$exons$start - intron.to.zoom$end)[-c(1:(index_first_exon))])))
+    if (jun.type == "Novel Donor") {
+      index_second_exon <- which((abs(transcript.to.plot$exons$start - intron.to.zoom$end) == 
+                                    min(abs(transcript.to.plot$exons$start - intron.to.zoom$end)[-index_first_exon])))
+    } else {
+      index_second_exon <- which((abs(transcript.to.plot$exons$start - intron.to.zoom$end) == 
+                                    min(abs(transcript.to.plot$exons$start - intron.to.zoom$end)[-c(1:(index_first_exon))])))
+    }
+    
     
   } else {
     
-    ## GET THE EXONS THAT WILL BE ZOOMED IN
     index_first_exon <- which(abs(transcript.to.plot$exons$start - intron.to.zoom$end) == 
                                 min(abs(transcript.to.plot$exons$start - intron.to.zoom$end)))
-    index_second_exon <- which((abs(transcript.to.plot$exons$end - intron.to.zoom$start) == 
-                                  min(abs(transcript.to.plot$exons$end - intron.to.zoom$start)[c(1:(index_first_exon-1))])))
+    
+    index_second_exon <- which(abs(transcript.to.plot$exons$end - intron.to.zoom$start) == 
+                                 min(abs(transcript.to.plot$exons$end - intron.to.zoom$start)))
+    
   }
   
   

@@ -4,25 +4,15 @@ visualise_transcript <- function(junID,
                                  database_name,
                                  junType) {
 
-  
-  # junID = "chr19:4491836-4492014:+" 
-  # transcript_ENS = "ENST00000616600"
-  # database_name = "GTEx v8"
-  # junType <- "Novel Acceptor"
 
-  
-  # junType <- "Novel Donor"
-  # junID = "chr10:87862643-87864453:+"
-  # transcript_ENS = "ENST00000688308"
-  # database_name = "TCGA"
-  
-  # junType <- "Novel Acceptor"
-  # junID = "chr19:4496406-4502025:+"
-  # transcript_ENS = "ENST00000616600"
-  # database_name = "TCGA"
+  # junType <- 'Novel Donor'
+  # junID = "chr1:155235312-155235462:-"
+  # transcript_ENS = "ENST00000368373"
+  # database_name ="GTEx v8"
+ 
   
   message(junType)
-  message(junID, " - ", transcript_ENS, " - ", database_name)
+  message("Visualise transcript: ",junID, " - ", transcript_ENS, " - ", database_name)
   
   
   ## Get junction color depending on the type of junction selected
@@ -40,28 +30,33 @@ visualise_transcript <- function(junID,
   
   
   ## Get coordinates from the transcript selected
-  hg38_transcript_to_plot <- get_transcript_to_plot( junID = junID, transcript_id = transcript_ENS )
-  hg38_transcript_to_plot$exons <- hg38_transcript_to_plot$exons %>% arrange(start)
+  hg38_transcript_to_plot <- get_transcript_to_plot( junID = junID, 
+                                                     transcript.id = transcript_ENS, 
+                                                     jxn.type = junType,
+                                                     geneName = NULL, 
+                                                     multiple = F)
+  
   
   
   #############################
   ## PLOT
   #############################
   
-  if ( is.null(hg38_transcript_to_plot) | nrow(hg38_transcript_to_plot$cds) == 0 | nrow(hg38_transcript_to_plot$utr) == 0 ) {
+  if ( is.null(hg38_transcript_to_plot) ) {
     
-    ggplot() +
-      theme_void(base_size = 14) +
-      geom_text(aes(0,0,
-                    label=paste0("Sorry, it has not been possible to plot the selected junction.\nThe transcript might not have CDS or UTR regions defined.\nTranscript biotype (Ensembl v111): '", 
-                                 str_replace(string = hg38_transcript_to_plot$exons$transcript_biotype %>% unique,
-                                             pattern = "_", replacement = " "), "'."))) %>%
+    visualise_empty_plot(text = paste0("Sorry, the selected ", str_to_lower(junType), " is not part of the MANE\ntranscript structure '",transcript_ENS,"'.")) %>% return()
+    
+    
+  } else if ( nrow(hg38_transcript_to_plot$cds) == 0 | nrow(hg38_transcript_to_plot$utr) == 0 ) {
+    
+    visualise_empty_plot(text = paste0("Sorry, it has not been possible to plot the selected junction.\nIt is part from a transcript structure that does not have CDS or UTR regions defined.\nTranscript biotype (Ensembl v111): '", 
+                                       str_replace(string = hg38_transcript_to_plot$exons$transcript_biotype %>% unique,
+                                                   pattern = "_", replacement = " "), "'.")) %>%
       return()
-    
     
   } else {
   
-
+    hg38_transcript_to_plot$exons <- hg38_transcript_to_plot$exons %>% arrange(start)
 
     exons_to_zoom <- get_exons_to_zoom(jun.type = junType, 
                                        intron.to.zoom = junID_coordinates,
@@ -127,6 +122,12 @@ visualise_multiple_transcripts <- function(junID,
                                            junType) {
   
   
+  # junID = "chr10:87880439-87925512:+"
+  # junType <- "Annotated Intron"
+  # transcript_ENS = "ENST00000371953"
+  # database_name = "TCGA"
+  # geneName <- "PTEN"
+  
   # junID <- "chr1:154597977-154598401:-"
   # transcript_ENS <- "ENST00000368474"
   # geneName <- "ADAR"
@@ -153,7 +154,11 @@ visualise_multiple_transcripts <- function(junID,
   
   
   ## Get coordinates from the transcript selected
-  hg38_transcripts_to_plot <- get_transcript_to_plot( junID, geneName = geneName, transcript_id =  transcript_ENS, multiple = T) 
+  hg38_transcripts_to_plot <- get_transcript_to_plot( junID, 
+                                                      geneName = geneName, 
+                                                      transcript.id =  transcript_ENS, 
+                                                      jxn.type = junType,
+                                                      multiple = T) 
   
   
   
@@ -164,13 +169,8 @@ visualise_multiple_transcripts <- function(junID,
   
   if ( is.null(hg38_transcripts_to_plot) | nrow(hg38_transcripts_to_plot$cds) == 0 | nrow(hg38_transcripts_to_plot$utr) == 0 ) {
     
-    ggplot() +
-      theme_void(base_size = 14) +
-      geom_text(aes(0,0,
-                    label=paste0("Sorry, it has not been possible to plot the selected junction.\nThe transcript might not have CDS or UTR regions defined.\nTranscript biotype (Ensembl v111): '", 
-                                 str_replace(string = hg38_transcript_to_plot$exons$transcript_biotype %>% unique,
-                                             pattern = "_", replacement = " "), "'."))) %>%
-      return()
+    visualise_empty_plot(text = paste0("Sorry, it has not been possible to plot the selected ", str_to_lower(junType), ".\nIt is part of a transcript structure that does not have CDS or UTR regions defined.\nTranscript biotype (Ensembl v111): '", 
+                                       str_replace_all(string = hg38_transcripts_to_plot$exons$transcript_biotype %>% unique, pattern = "_", replacement = " "), "'.")) %>% return()
     
   } else {
     
@@ -204,7 +204,7 @@ visualise_multiple_transcripts <- function(junID,
         ) +
         ggtranscript::geom_intron(
           data = ggtranscript::to_intron(exons_to_plot, "transcript_id"),
-          aes(strand = hg38_transcripts_to_plot$strand )
+          aes(strand = ggtranscript::to_intron(exons_to_plot, "transcript_id")$strand %>% unique)
         ) + 
         ggtranscript::geom_junction(
           data = junction_to_plot,
@@ -238,10 +238,28 @@ visualise_CLIP <- function(junID,
                            geneName, 
                            junType) {
   
-  # print(junID, " - ", transcript_ENS, " - ", geneName, " - ", junType)
+ 
+  # junID <- "chr1:154597977-154598075:-"
+  # geneName <- "ADAR"
+  # transcript_ENS = "ENST00000368474"
+  # junType ="Novel Donor"
+  
+  
+  # junID <- "chr17:45894687-45943908:+"
+  # geneName <- "MAPT"
+  # transcript_ENS = "ENST00000262410"
+  # junType ="Novel Acceptor"
+  
+  # junID <- "chr19:4501318-4501913:+"
+  # geneName <- "HDGFL2"
+  # transcript_ENS = "ENST00000616600"
+  # junType ="Annotated Intron"
+  
   # junID <- "chr19:17621871-17623117:-"
   # geneName <- "UNC13A"
+  
   # junID <- "chr1:154597977-154598401:-"
+  
   # junID <- "chr1:154597977-154598075:-"
   # geneName <- "ADAR"
   
@@ -259,20 +277,21 @@ visualise_CLIP <- function(junID,
     range_color = "#288a5b"
   }
   
-  print(paste0("CLIP: ", junID, " ", transcript_ENS, " - ", (geneName )[1]))
+  print(paste0("CLIP: '", junID, "' '", transcript_ENS, "' - '", (geneName )[1], "' - '", junType, "'"))
   
   junID_coordinates <- get_genomic_coordinates(junID)
   
+  
   ## Connect to the CLIP data database and retrieve data from the current gene
   database_path <- file.path("./database/clip_data.sqlite")
-  
   con <- DBI::dbConnect(RSQLite::SQLite(), database_path)
-  query <- paste0("SELECT * FROM '", (geneName )[1], "'")
+  query <- paste0("SELECT * FROM '", (geneName)[1], "'")
   db_clip_data_gr <- DBI::dbGetQuery(con, query) %>%
-    filter(totalClipExpNum >= 10) %>%
+    arrange(desc(totalClipExpNum)) %>%
+    #filter(totalClipExpNum >= 10) %>%
     GenomicRanges::GRanges()
-  
   DBI::dbDisconnect(conn = con)
+  
   
   ## Get overlaps
   encori_overlaps <- GenomicRanges::findOverlaps(query = junID_coordinates %>% GenomicRanges::GRanges(),
@@ -283,12 +302,45 @@ visualise_CLIP <- function(junID,
   if ( encori_overlaps %>% length() > 0 ) {
     
     ## GET MANE TRANSCRIPT INFO
-    hg38_transcript_to_plot <- get_transcript_to_plot( junID = junID, transcript_id = transcript_ENS)
+    #hg38_transcript_to_plot <- get_transcript_to_plot( junID = junID, transcript.id = transcript_ENS, jxn.type = junType)
+    
+    ## Get coordinates from the selected transcript
+    hg38_transcripts_to_plot <- get_transcript_to_plot( junID = junID, 
+                                                        transcript.id = NULL, 
+                                                        jxn.type = junType, 
+                                                        geneName = geneName,
+                                                        multiple = T) 
+    
     
     
     ## PLOT USING TRANSCRIPT INFO
-    if ( !is.null(hg38_transcript_to_plot) ) {
+    if ( is.null(hg38_transcripts_to_plot) ) {
       
+      visualise_empty_plot(text = paste0("Sorry, it has not been possible to plot the CLIP-seq information for the selected ", str_to_lower(junType), 
+                                         ".\nIt is not part of the MANE transcript structure.")) %>% return()
+      
+      
+    } else if ( nrow(hg38_transcripts_to_plot$cds) == 0 | nrow(hg38_transcripts_to_plot$utr) == 0 ) {
+      
+      visualise_empty_plot(text = paste0("Sorry, it has not been possible to plot the CLIP-seq information for the selected junction.\nIt is part from a transcript structure that does not have CDS or UTR regions defined.\nTranscript biotype (Ensembl v111): '", 
+                                         str_replace(string = hg38_transcript_to_plot$exons$transcript_biotype %>% unique,
+                                                     pattern = "_", replacement = " "), "'.")) %>%
+        return()
+      
+    } else {
+      
+      
+      if ( any(hg38_transcripts_to_plot$transcript$transcript_id %>% unique %in% transcript_ENS) ) {
+        hg38_transcript_ID_to_plot <- transcript_ENS
+      } else {
+        hg38_transcript_ID_to_plot <- (hg38_transcripts_to_plot$utr$transcript_id %>% unique)[1]
+      }
+      
+      hg38_transcript_to_plot <- list(transcript = hg38_transcripts_to_plot$transcript %>% filter(transcript_id == hg38_transcript_ID_to_plot),
+                                      exons = hg38_transcripts_to_plot$exons %>% filter(transcript_id == hg38_transcript_ID_to_plot),
+                                      cds = hg38_transcripts_to_plot$cds %>% filter(transcript_id == hg38_transcript_ID_to_plot), 
+                                      utr = hg38_transcripts_to_plot$utr %>% filter(transcript_id == hg38_transcript_ID_to_plot))
+    
       
       ## GET UNIQUE TRANSCRIPT SITES
       RBP_CLIP_sites_to_plot <- db_clip_data_gr[S4Vectors::subjectHits(encori_overlaps), ] %>% 
@@ -296,17 +348,20 @@ visualise_CLIP <- function(junID,
         dplyr::group_by(seqnames, start, end) %>%
         distinct(RBP, .keep_all = T) %>%
         ungroup() %>% 
-        arrange(start)  %>% 
         as_tibble(rownames = "index") %>% 
         mutate(index = index %>% as.integer())
       
+      if ( RBP_CLIP_sites_to_plot %>% nrow > 50 ) {
+        RBP_CLIP_sites_to_plot <- RBP_CLIP_sites_to_plot[1:50,]
+      }
       
       
+      
+      hg38_transcript_to_plot$exons <- hg38_transcript_to_plot$exons %>% arrange(start)
       exons_to_zoom <- get_exons_to_zoom(jun.type = junType, 
                                          intron.to.zoom = junID_coordinates,
                                          transcript.to.plot = hg38_transcript_to_plot)
-
-      exons_to_zoom <- exons_to_zoom %>% mutate(start = start-100, end=end+100)
+      exons_to_zoom <- exons_to_zoom %>% mutate(start = start - 100, end = end + 100)
       
       
    
@@ -321,7 +376,8 @@ visualise_CLIP <- function(junID,
         ggtranscript::geom_intron(
           data = to_intron(hg38_transcript_to_plot$exon, "transcript_id"),
           aes(strand = hg38_transcript_to_plot$exon$strand %>% unique)
-        )  +geom_range(
+        )  +
+        geom_range(
           data = hg38_transcript_to_plot$cds,
           fill = "#cccccc"
         ) +
@@ -385,42 +441,44 @@ visualise_CLIP <- function(junID,
         ylab(hg38_transcript_to_plot$exon$transcript_id %>% unique )  %>%
         return()
       
-    } else {
-      visualise_empty_plot()
-    }
+    } 
     
   } else {
-    visualise_empty_plot()
+    visualise_empty_plot(text = paste0("Sorry, there is no CLIP-seq data available for gene  '", geneName,"'\nsupported by at least 10 CLIP experiments.\nClick on 'Download all regulatory data' to download all CLIP-seq data\nfor gene '", geneName,"'.")) %>% return()
+   
   }
   
 }
 
 
 visualise_clinvar <- function(junID, 
-                              clinvar_locus,
+                              #clinvar_locus,
                               
-                              CLNSIG_list,
-                              CLNVC_list,
-                              MC_list,
+                              #CLNSIG_list,
+                              #CLNVC_list,
+                              #MC_list,
                               
                               database_name, 
                               junType, 
                               geneName) {
   
-  # clinvar_locus <- "chr10:87880439"
- 
-  # junID = "chr10:87880439-87925512:-"
-  # clinvar_locus = c("chr1:155235101,chr1:155235193,chr1:155235679,chr1:155235680,chr1:155237579,chr1:155239615")
+  # junID = "chr1:155235308-155235680:-"
   # database_name = "GTEx v8" 
-  # junType = "Annotated Intron" 
+  # junType = "Novel Acceptor" 
+  # geneName = "GBA1" 
+ 
+  # junID = "chr1:154585345-154585894:-"
+  # database_name = "GTEx v8" 
+  # junType = "Novel Donor" 
+  # geneName = "ADAR"
+  
+  # junID = "chr10:87862643-87925512:+"
   # geneName = "PTEN"
+  # junType = "Novel Donor" 
+  # database_name = "GTEx v8"
   
-  message(CLNSIG_list)
-  message(CLNVC_list)
-  message(MC_list)
-  message(clinvar_locus)
-  
-  message(junID, " ", clinvar_locus, " ", database_name, " ", junType, " ", geneName)
+
+  message("CLINVAR visualisation: '", junID, "' '", database_name, "' '", junType, "' '", geneName, "'")
   
   ## Get junction color depending on the type of junction selected
   if (junType == "Annotated Intron") {
@@ -434,28 +492,45 @@ visualise_clinvar <- function(junID,
   ## Get junction coordinates
   junID_coordinates <- get_genomic_coordinates(junID)
     
-  ## Get clinvar coordinates
-  clinvar_locus_coordinates <- get_genomic_coordinates(coordinates = clinvar_locus) 
+  ## Get clinvar data
+  clinvar_data <- get_database_clinvar(junID_coordinates) 
   
   ## Get the transcript
-  hg38_transcript_to_plot <- get_transcript_to_plot(junID = junID, geneName = geneName)
+  #hg38_transcript_to_plot <- get_transcript_to_plot(junID = junID, geneName = geneName, jxn.type = junType)
+  
+  ## Get coordinates from the transcript selected
+  hg38_transcript_to_plot <- get_transcript_to_plot( junID = junID, 
+                                                      transcript.id = NULL, 
+                                                      jxn.type = junType, 
+                                                      geneName = geneName,
+                                                      multiple = F) 
 
   ## Plot
-  if ( !is.null(hg38_transcript_to_plot) ) {
+  ## PLOT USING TRANSCRIPT INFO
+  if ( is.null(hg38_transcript_to_plot) ) {
     
-    ## GET THE EXONS THAT WILL BE ZOOMED IN
-    # index_first_exon <- which(abs(hg38_transcript_to_plot$exons$start - (junID_coordinates_gr %>% GenomicRanges::end())) == min(abs(hg38_transcript_to_plot$exons$start-(junID_coordinates_gr %>% GenomicRanges::end()))))
-    # index_second_exon <- which(abs(hg38_transcript_to_plot$exons$end - (junID_coordinates_gr %>% GenomicRanges::start())) == min((abs(hg38_transcript_to_plot$exons$end - (junID_coordinates_gr %>% GenomicRanges::start())))[-index_first_exon]))
-    # 
-    # exons_to_zoom <- rbind(hg38_transcript_to_plot$exons[index_first_exon,],
-    #                        hg38_transcript_to_plot$exons[index_second_exon,])
-    # 
-    # junID_coordinates <- get_genomic_coordinates(junID)
+    visualise_empty_plot(text = paste0("Sorry, it has not been possible to plot the CLINVAR information for the selected ", str_to_lower(junType), 
+                                       ".\nIt is not part of a MANE transcript structure.")) %>% return()
+    
+    
+  } else if ( nrow(hg38_transcript_to_plot$cds) == 0 | nrow(hg38_transcript_to_plot$utr) == 0 ) {
+    
+    visualise_empty_plot(text = paste0("Sorry, it has not been possible to plot the CLINVAR information for the selected junction.\nIt is part from a transcript structure that does not have CDS or UTR regions defined.\nTranscript biotype (Ensembl v111): '", 
+                                       str_replace_all(string = hg38_transcript_to_plot$exons$transcript_biotype %>% unique,
+                                                       pattern = "_", replacement = " "), "'.")) %>%
+      return()
+    
+  } else {
+    
+    
+    ## GET THE EXONS TO ZOOM IN
+    hg38_transcript_to_plot$exons <- hg38_transcript_to_plot$exons %>% arrange(start)
     
     exons_to_zoom <- get_exons_to_zoom(jun.type = junType, 
                                        intron.to.zoom = junID_coordinates,
                                        transcript.to.plot = hg38_transcript_to_plot)
-
+    
+    
     ## PLOT
     plot_double_annotated <- hg38_transcript_to_plot$exons %>%
       ggplot(aes(
@@ -478,13 +553,14 @@ visualise_clinvar <- function(junID,
       ) +
       
       ggrepel::geom_label_repel(
-        data = clinvar_locus_coordinates,
+        data = clinvar_data,
         aes(x = start, fontface = "bold",
-            label = paste0(ID),#, " \n ", seqnames, ":", start, "-", end),#),
-            color = ID),
+            label = paste0(ID),
+            color = CLNSIG),
         nudge_y = 0.5,
         nudge_x = 3,
-        direction = c("y")
+        direction = c("y"),
+        max.overlaps = 100
       ) +
       
       ggtranscript::geom_junction(
@@ -500,12 +576,12 @@ visualise_clinvar <- function(junID,
             legend.text  = element_text(size = "10"), 
             plot.caption = element_text(size = "12"),
             plot.subtitle = element_text(size = "15"),
-            legend.position = "none") +
+            legend.position = "top") +
       #guides(fill = guide_legend(element_blank())) +
       xlab(paste0("Genomic position (", hg38_transcript_to_plot$exons$seqnames %>% unique() ,")")) + 
       ylab(paste0(geneName)) +
       labs(#subtitle = "Displaying regulatory data from 'HepG2' and 'K562' cell lines:",
-           caption = "*ClinVar data sourced from: (https://www.ncbi.nlm.nih.gov/variation/view).")
+           caption = "*ClinVar data sourced from: (https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/).")
     
     plot_double_annotated
     
@@ -516,9 +592,7 @@ visualise_clinvar <- function(junID,
     plot(plot_zoomed_annotated) %>%
       return()
     
-  } else {
-    visualise_empty_plot()
-  }
+  } 
 }
 
 

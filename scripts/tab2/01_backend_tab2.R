@@ -331,7 +331,8 @@ get_gene_splicing_data_to_visualise <- function(gene.id,
     
     ## Get coordinates from the transcript selected
     
-    hg38_transcripts_to_plot <- get_transcript_to_plot(transcript_id = transcript.id,
+    hg38_transcripts_to_plot <- get_transcript_to_plot(transcript.id = transcript.id,
+                                                       jxn.type = junction.type,
                                                        multiple = T)  
     
     ## PLOT
@@ -492,9 +493,11 @@ visualise_gene_data <- function(gene_splicing_data) {
       ) +
       ggtranscript::geom_junction_label_repel(
         data = gene_splicing_data$junctions_to_plot,
+        color = gene_splicing_data$junctions_to_plot$junction_color,
         mapping = aes(label = sum_counts), 
-        max.overlaps = 150,
-        junction.y.max = .5
+        ncp = 100, 
+        junction.y.max = 0.5
+        
       ) + 
       
       theme_light(base_size = 16) +
