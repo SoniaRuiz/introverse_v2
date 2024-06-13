@@ -45,16 +45,13 @@ set_UI_distance_information <- function(jxn_info) {
 set_UI_transcript_information <- function(query_results) {
   
   
-  if ( str_detect(query_results %>% drop_na(junID_type) %>% pull(junID_type) %>% unique, pattern = "novel") ) {
-    junID = query_results %>% drop_na(novel_coordinates) %>% pull(novel_coordinates) %>% unique
-  } else {
-    junID = query_results %>% drop_na(ref_coordinates) %>% pull(ref_coordinates) %>% unique
-  }
+  junID = query_results %>% drop_na(coordinates) %>% pull(coordinates) %>% unique
 
   
   query_results_transcript <- get_transcript_to_plot(junID = junID,
+                                                     transcript.id = NULL,
                                                      geneName = query_results %>% drop_na(gene_name) %>% pull(gene_name) %>% unique,
-                                                     jxn.type = query_results %>% drop_na(junID_type) %>% pull(junID_type) %>% unique,
+                                                     jxn.type = query_results %>% drop_na(junID_type) %>% pull(junID_type) %>% unique ,
                                                      multiple = T)
   
 
@@ -98,8 +95,7 @@ set_UI_transcript_information <- function(query_results) {
                                 var ID_database= $('#h4_databaseID')[0].innerText; 
                                 Shiny.setInputValue('databaseName_tab1', ID_database);
                                 
-                                //var transcript_ID = $('#atag_transcriptID')[0].innerText;
-                                //Shiny.setInputValue('transcriptENS_tab1', transcript_ID );
+                         
   
                                var junType= $('#span_junType')[0].innerText; 
                                Shiny.setInputValue('junType_tab1', junType);
@@ -109,8 +105,15 @@ set_UI_transcript_information <- function(query_results) {
   
                                Shiny.setInputValue('transcriptMANE_tab1', 0);
                                $('#modalVisualiseTranscript_tab1').modal('show');", 
-                                query_results_transcript$utr %>% filter(tag %>% is.na()) %>% distinct(transcript_id) %>% nrow(), 
-                                paste(str_replace_all(string = query_results_transcript$utr %>% filter(tag %>% is.na()) %>% distinct(transcript_id, .keep_all = T) %>% pull(transcript_biotype) %>% unique,
+                                query_results_transcript$utr %>% 
+                                  filter(tag %>% is.na()) %>% 
+                                  distinct(transcript_id) %>% 
+                                  nrow(), 
+                                paste(str_replace_all(string = query_results_transcript$utr %>% 
+                                                        filter(tag %>% is.na()) %>% 
+                                                        distinct(transcript_id, .keep_all = T) %>% 
+                                                        pull(transcript_biotype) %>% 
+                                                        unique,
                                                       pattern = "_", replacement = " "), collapse = "' and '"), 
                                 "transcripts"
                                )))
@@ -167,8 +170,7 @@ set_UI_clip_information <- function(query_results) {
                                        Shiny.setInputValue('junID_tab1', ID_jxn);
                                        var gene_Name= $('#span_geneName')[0].innerText; 
                                        Shiny.setInputValue('geneName_tab1', gene_Name);
-                                       //var transcript_Name= $('#transcript_list span a')[0].innerText; 
-                                       //Shiny.setInputValue('transcriptENS_tab1', transcript_Name );
+                                       
                                        var junType= $('#span_junType')[0].innerText; 
                                        Shiny.setInputValue('junType_tab1', junType);
                                        $('#modalVisualiseCLIP_tab1').css({'height':'90vh'});

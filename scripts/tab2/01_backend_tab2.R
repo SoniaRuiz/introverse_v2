@@ -147,7 +147,16 @@ get_gene_splicing_data_to_visualise <- function(gene.id,
   
   
   
-  message(compare, " - ", gene.id, " - ", transcript.id, " - ", database.sqlite, " - ", project.id, " - ", table.name, " - ", junction.type)
+  message("'get_gene_splicing_data_to_visualise': ", compare, " - ", gene.id, " - ", transcript.id, " - ", database.sqlite, " - ", project.id, " - ", table.name, " - ", junction.type)
+  
+  # compare = F
+  # gene.id = "PTEN"
+  # transcript.id = "ENST00000371953"
+  # database.sqlite="TCGA_1read_subsampleFALSE.sqlite"
+  # project.id = "LAML"
+  # table.name = "Primary blood derived cancer - peripheral blood"
+  # junction.type="novel_acceptor"
+  
   
   # gene.id = "PSEN1"
   # transcript.id = "ENST00000394164"
@@ -181,7 +190,7 @@ get_gene_splicing_data_to_visualise <- function(gene.id,
   # table.name = "Primary tumor"
   # junction.type = "all"
   
-  # compare = ""
+  # compare = F
   # gene.id = "PTEN"
   # transcript.id = "ENST00000371953"
   # database.sqlite = "TCGA_1read_subsampleFALSE.sqlite"
@@ -285,7 +294,7 @@ get_gene_splicing_data_to_visualise <- function(gene.id,
                   missplicing.novel_n_individuals, missplicing.ref_n_individuals,
                   novel.novel_type, novel.seqnames AS novel_seqnames, novel.start AS novel_start, novel.end AS novel_end, novel.strand AS novel_strand,
                   intron.seqnames AS intron_seqnames, intron.start AS intron_start, intron.end AS intron_end, intron.strand AS intron_strand,
-                  intron.transcript_id_list
+                  intron.transcript_id_list, intron.u2_intron
                   FROM '", table.name, "_", project.id, "_misspliced' AS 'missplicing'
                   INNER JOIN 'novel' ON novel.novel_junID = missplicing.novel_junID
                   INNER JOIN 'intron' ON intron.ref_junID = missplicing.ref_junID
@@ -348,10 +357,13 @@ get_gene_splicing_data_to_visualise <- function(gene.id,
                       strand = intron_strand,
                       transcript_id = transcript_ENS,
                       sum_counts = ref_sum_counts,
-                      "Seen in (n samples)" = ref_n_individuals) %>%
+                      "Seen in (n samples)" = ref_n_individuals,
+                      u2_intron) %>%
         arrange(start) %>%
-        distinct(start, end, transcript_id, .keep_all = T) %>%
-        mutate(junction_color = "blue",
+        distinct(seqnames, start, end, transcript_id, .keep_all = T) %>%
+        mutate(u2_intron = replace_na(data = u2_intron, replace = 1)) %>%
+        mutate(intron_color = ifelse(u2_intron == 0, "red", "black"),
+               junction_color = "blue",
                junction_type = "annotated_intron") %>%
         as_tibble() %>%
         filter(transcript_id %in% (hg38_transcripts_to_plot$exons$transcript_id %>% unique)) %>%
@@ -369,7 +381,9 @@ get_gene_splicing_data_to_visualise <- function(gene.id,
                       "Seen in (n samples)" = novel_n_individuals) %>%
         #filter(novel_sum_counts > 1) %>%
         distinct(start, end, transcript_id, .keep_all = T) %>% 
-        mutate(length = end - start,
+        mutate(u2_intron = 1,
+               length = end - start,
+               intron_color = "black",
                junction_color = ifelse(junction_type == "novel_donor", "#288a5b", "#64037d")) %>%
         as_tibble() %>%
         filter(length < sum(hg38_transcripts_to_plot$transcript$width))%>%
@@ -423,6 +437,12 @@ get_gene_splicing_data_to_visualise <- function(gene.id,
                cds = hg38_transcripts_to_plot$cds,
                utr = hg38_transcripts_to_plot$utr,
                junctions_to_plot = junctions_to_plot,
+               introns_to_plot = ggtranscript::to_intron(hg38_transcripts_to_plot$exons, "transcript_id") %>%
+                 left_join(y = junctions_to_plot %>% 
+                             dplyr::select(seqnames,start,end, strand , intron_color) %>%
+                             mutate(start = start - 1,  end = end + 1 ),
+                           by = c("seqnames","start","end", "strand")) %>%
+                 mutate(intron_color = replace_na(data = intron_color, replace = "black")),
                plot_title = table.name) %>%
             return()
           
@@ -466,6 +486,13 @@ visualise_gene_data <- function(gene_splicing_data) {
     
   } else {
     
+    if (any(gene_splicing_data$introns_to_plot$intron_color == "red")) {
+      plot_caption = "*Annotated introns coloured with red indicate regions targetted by the minor spliceosome (PMID: 32484558)."  
+    } else {
+      plot_caption = ""
+    }
+    
+    
     gene_splicing_data$exons %>%
       ggplot(aes(
         xstart = start,
@@ -482,21 +509,27 @@ visualise_gene_data <- function(gene_splicing_data) {
         height = 0.25
       ) +
       ggtranscript::geom_intron(
-        data = ggtranscript::to_intron(gene_splicing_data$exons, "transcript_id"),
-        aes(strand = strand %>% unique)
+        data = gene_splicing_data$introns_to_plot,
+        aes(strand = strand %>% unique),
+        color = gene_splicing_data$introns_to_plot$intron_color
       ) + 
+      
       ggtranscript::geom_junction(
         data = gene_splicing_data$junctions_to_plot,
         color = gene_splicing_data$junctions_to_plot$junction_color,
         ncp = 100, 
         junction.y.max = 0.5
       ) +
+      
       ggtranscript::geom_junction_label_repel(
         data = gene_splicing_data$junctions_to_plot,
         color = gene_splicing_data$junctions_to_plot$junction_color,
-        mapping = aes(label = sum_counts), 
-        ncp = 100, 
-        junction.y.max = 0.5
+        mapping = aes(label = sum_counts),#paste0("ID: ", tibble::rowid_to_column(gene_splicing_data$junctions_to_plot)$rowid,"\n", sum_counts, " reads")),
+        #ncp = 100, 
+        junction.y.max = 0.5,
+        box.padding = 0.1,
+        max.overlaps = 100
+        #junction.orientation = "top"
         
       ) + 
       
@@ -508,8 +541,11 @@ visualise_gene_data <- function(gene_splicing_data) {
             legend.position = "top",
             legend.text = element_text(size = "11"),
             legend.title = element_text(size = "11")) +
-      xlab(paste0("Genomic position (", gene_splicing_data$exons$seqnames %>% unique ,")")) + 
-      ylab(gene_splicing_data$exons$gene_name %>% unique) %>% 
+      xlab(paste0("Genomic position (", gene_splicing_data$exons$seqnames %>% unique ,")(hg38)")) + 
+      ylab(gene_splicing_data$exons$gene_name %>% unique) +
+      labs(caption = paste0("*Junction labels represent the cummulative number of supporting split reads across the samples of the selected experiment.\n", 
+                            plot_caption)) %>% 
+      
       return()
   }
 }

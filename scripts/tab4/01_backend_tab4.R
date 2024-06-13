@@ -83,6 +83,7 @@ visualise_metadata_sample_clusters <- function(database_name) {
   # database_name <- "GTEx v8"
   # database_name <- "GTEx v8 Age"
   # database_name <- "ENCODE shRNA"
+  # database_name <- "ENCODE CRISPR"
   # database_name <- "LRRK2 G2019S mutation"
   # database_name <- "Alzheimer's Disease/Control"
   # database_name <- "Parkinson's Disease/Control"
@@ -128,13 +129,17 @@ visualise_metadata_sample_clusters <- function(database_name) {
   
   if ( database_name == "GTEx v8") {
     visualise_metadata_sample_clusters_gtex(data_to_plot)
-  } else if ( database_name == "ENCODE shRNA") {
+    
+  } else if ( str_detect(string = database_name, "\\ENCODE") ) {
     visualise_metadata_sample_clusters_encode(data_to_plot)
+    
   } else if ( database_name == "Alzheimer's Disease/Control" ||
               database_name == "Parkinson's Disease/Control" ) {
     visualise_metadata_sample_clusters_SRP100948(data_to_plot)
+    
   } else if ( database_name == "LRRK2 G2019S mutation"  ) {
     visualise_metadata_sample_clusters_SRP151040(data_to_plot)
+    
   } else {
     
     data_to_plot <- data_to_plot %>%

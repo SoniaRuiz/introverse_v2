@@ -9,7 +9,12 @@ visualise_transcript <- function(junID,
   # junID = "chr1:155235312-155235462:-"
   # transcript_ENS = "ENST00000368373"
   # database_name ="GTEx v8"
- 
+
+  # junID <- "chr4:94334678-94342794:-" 
+  # transcript_ENS = "ENST00000295256"
+  # database_name ="GTEx v8"
+  # junType <- 'Novel Acceptor'
+  # 'get_transcript_to_plot': 'chr4:94334678-94342794:-' '' 'ENST00000295256' 'Novel Acceptor' 'FALSE
   
   message(junType)
   message("Visualise transcript: ",junID, " - ", transcript_ENS, " - ", database_name)
@@ -122,6 +127,12 @@ visualise_multiple_transcripts <- function(junID,
                                            junType) {
   
   
+  # junID = "chr4:99336742-99342794:-"
+  # junType <- "Novel Acceptor"
+  # transcript_ENS = "ENST00000295256"
+  # database_name = "all"
+  # geneName <- "ADH1C"
+  
   # junID = "chr10:87880439-87925512:+"
   # junType <- "Annotated Intron"
   # transcript_ENS = "ENST00000371953"
@@ -174,7 +185,11 @@ visualise_multiple_transcripts <- function(junID,
     
   } else {
     
-    transcripts_to_plot <- hg38_transcripts_to_plot$cds %>% pull(transcript_id) %>% unique %>% sort
+    transcripts_to_plot <- hg38_transcripts_to_plot$cds %>% 
+      filter(is.na(tag)) %>%
+      pull(transcript_id) %>% 
+      unique %>% 
+      sort
     
     exons_to_plot <- hg38_transcripts_to_plot$exons %>%
       filter(transcript_id %in% transcripts_to_plot) %>%
@@ -234,11 +249,27 @@ visualise_multiple_transcripts <- function(junID,
 }
 
 visualise_CLIP <- function(junID, 
-                           transcript_ENS, 
+                           transcript_ENS = NULL, 
                            geneName, 
                            junType) {
+
   
- 
+  # junID <- 'chr4:94334678-94342794:-'
+  # geneName <- 'HPGDS'
+  # junType = 'Novel Acceptor'
+  # transcript_ENS = "ENST00000295256"
+  
+  # junID <- 'chr6:89603110-89605849:-'
+  # geneName <- 'LYRM2'
+  # junType = 'Novel Donor'
+  # transcript_ENS = "ENST00000369393"
+  
+  # junID <- 'chr4:89828185-89828473:-'
+  # junID <- 'chr4:89726661-89745540:-'
+  # geneName <- 'SNCA' 
+  # junType = 'Novel Donor'
+  # transcript_ENS = NULL
+
   # junID <- "chr1:154597977-154598075:-"
   # geneName <- "ADAR"
   # transcript_ENS = "ENST00000368474"
@@ -267,6 +298,22 @@ visualise_CLIP <- function(junID,
   # transcript_ENS <- "ENST00000688308"
   # geneName <- "PTEN"
   # junType <- "Novel Donor"
+  
+  
+  # junID <- "chr4:89835693-89836742:-"
+  # geneName <- "SNCA"
+  # transcript_ENS = ""
+  # junType ="Annotated Intron"
+  
+  # junID <- "chr4:99930622-99939216:-"
+  # geneName <- "DNAJB14"
+  # transcript_ENS = ""
+  # junType ="Novel Donor"
+  
+  # junID <- "chr4:94260634-94302145:-"
+  # geneName <- "HPGDS"
+  # transcript_ENS = "ENST00000295256"
+  # junType ="Novel Acceptor"
   
   ## Get junction color depending on the type of junction selected
   if (junType == "Annotated Intron") {
@@ -306,10 +353,10 @@ visualise_CLIP <- function(junID,
     
     ## Get coordinates from the selected transcript
     hg38_transcripts_to_plot <- get_transcript_to_plot( junID = junID, 
-                                                        transcript.id = NULL, 
+                                                        transcript.id = transcript_ENS, 
                                                         jxn.type = junType, 
                                                         geneName = geneName,
-                                                        multiple = T) 
+                                                        multiple = T ) 
     
     
     
@@ -477,7 +524,11 @@ visualise_clinvar <- function(junID,
   # junType = "Novel Donor" 
   # database_name = "GTEx v8"
   
-
+  # junID = 'chr4:89822344-89828142:-' 
+  # database_name = 'TCGA' 
+  # junType = 'Novel Acceptor' 
+  # geneName = 'SNCA'
+  
   message("CLINVAR visualisation: '", junID, "' '", database_name, "' '", junType, "' '", geneName, "'")
   
   ## Get junction color depending on the type of junction selected
@@ -494,6 +545,9 @@ visualise_clinvar <- function(junID,
     
   ## Get clinvar data
   clinvar_data <- get_database_clinvar(junID_coordinates) 
+  
+  clinvar_data <- clinvar_data %>% 
+    mutate(strand = junID_coordinates$strand %>% as.character())
   
   ## Get the transcript
   #hg38_transcript_to_plot <- get_transcript_to_plot(junID = junID, geneName = geneName, jxn.type = junType)
@@ -554,12 +608,13 @@ visualise_clinvar <- function(junID,
       
       ggrepel::geom_label_repel(
         data = clinvar_data,
-        aes(x = start, fontface = "bold",
+        aes(x = start, 
+            fontface = "bold",
             label = paste0(ID),
             color = CLNSIG),
-        nudge_y = 0.5,
-        nudge_x = 3,
-        direction = c("y"),
+        #nudge_y = 0.5,
+        #nudge_x = 3,
+        #direction = c("y"),
         max.overlaps = 100
       ) +
       
@@ -569,6 +624,7 @@ visualise_clinvar <- function(junID,
         colour = range_color,
         junction.y.max = 0.5 
       ) +
+      
       ggforce::facet_zoom(xlim = c((min(exons_to_zoom$start)-100):(max(exons_to_zoom$end)+100))) +
       theme_light(base_size = 16) +
       theme(axis.text.y = element_text(angle = 90, hjust = 0.5),

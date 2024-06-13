@@ -195,6 +195,7 @@ query_database_nearby <- function(chr, start, end, strand,
     query_results %>%
       distinct(coordinates, .keep_all = T) %>%
       mutate(junction_type = stringr::str_replace_all(string = junction_type, pattern = "_", replacement = " ") %>% stringr::str_to_title()) %>%
+      drop_na(gene_name) %>%
       dplyr::rename(Coordinates = coordinates,
                     "Junction Type" = junction_type,
                     "Gene Symbol" = gene_name,
@@ -203,6 +204,7 @@ query_database_nearby <- function(chr, start, end, strand,
                     "Start" = start,
                     "End" = end,
                     "Strand" = strand) %>%
+      
       return()
     
   } else {
@@ -219,6 +221,31 @@ query_database <- function(chr, start, end, strand,
   
   
   message("query_database: '", chr, ":", start, "-", end, ":", strand, "' // ", databases_name, " - ", project_id, " - ", table_name)
+  
+  # chr = 4
+  # start = 99930622
+  # end = 99939216
+  # strand = "-"
+  # databases_name = "gtex"
+  # project_id = "ADIPOSE_TISSUE"
+  # table_name = "Adipose - Subcutaneous"
+  
+  # chr = 4
+  # start = 89835693
+  # end = 89836742
+  # strand = "-"
+  # databases_name = "gtex"
+  # project_id = "ADIPOSE_TISSUE"
+  # table_name = "Adipose - Subcutaneous"
+  
+  # chr = 4
+  # start = 89822389
+  # end = 89828142
+  # strand = "-"
+  # databases_name = "tcga"
+  # project_id = "HNSC"
+  # table_name = "all"
+  
   # chr = 4
   # start = 89822389
   # end = 89828142
@@ -520,7 +547,8 @@ query_database <- function(chr, start, end, strand,
                         WHERE transcript.id IN (", master_information$transcript_id_list %>% unique, ")")
         db_gene <- DBI::dbGetQuery(con, query)
         
-        if ( junction_type == "annotated intron" && all(local_query_result$ref_type %>% unique == "never") ) {
+        if ( junction_type == "annotated intron" && 
+             (all(local_query_result$ref_type %>% unique == "never") || all(local_query_result$ref_type %>% unique == "maybe")) ) {
           local_query_result <- local_query_result %>% dplyr::select(-novel_junID) %>%
             inner_join(y = master_information,
                        by = c("ref_junID" = "ref_junID"))
@@ -717,13 +745,16 @@ setup_UI_results_section <- function(query_results) {
     if ( local_query_results$junID_type %>% unique == "annotated intron" ) {
       
       local_query_results <- local_query_results %>%
+        dplyr::select(-ref_coordinates) %>%
+        dplyr::rename(ref_coordinates = coordinates) %>%
         dplyr::relocate(dplyr::any_of(x = c("project",
                                             "cluster",
                                             "ref_coordinates", 
                                             "ref_n_individuals",
                                             "ref_sum_counts",
                                             "MSR_D","MSR_A",
-                                            "novel_coordinates", "novel_type")))
+                                            "novel_coordinates", 
+                                            "novel_type")))
       
       ## If it is a NEVER-MISSPLICED annotated intron, we remove data corresponding to the novel junction
       if ( all(local_query_results$ref_type %>% unique == "never") ) {
@@ -766,7 +797,7 @@ setup_UI_results_section <- function(query_results) {
                               "Sample Group" = "cluster",
                               "Gene Name" = "gene_name",
                               "Gene TPM" = "gene_tpm",
-                              "Project" = "project",
+                              "Sample Experiment" = "project",
                               "Database" = "database")
     
     final_query_results <- local_query_results %>%

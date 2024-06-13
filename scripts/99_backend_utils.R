@@ -128,12 +128,17 @@ get_database_clinvar <- function(jxn_info) {
 
 create_indexes_database <- function() {
   
+  library(DBI)
+  
   ################################
   ## SPLICING DATABASES
   ################################
  
   
   for (con in conn_list) {
+    
+    # con <- conn_list[1]
+    
     
     ## INTRON TABLE -----------------------------------------------------------------
     
@@ -232,6 +237,44 @@ create_indexes_database <- function() {
       res <- DBI::dbSendQuery(conn = con, statement = query)
       DBI::dbClearResult(res)
       
+    }
+    
+    ## Add indexes to child tables
+    query <- paste0("SELECT * FROM 'metadata'")
+    db_metadata <- DBI::dbGetQuery(con, query)
+    
+    for(project_id in db_metadata$SRA_project %>% unique) {
+      
+      # project_id <- (db_metadata$SRA_project %>% unique)[1]
+      
+      for(cluster in db_metadata %>% filter(SRA_project == project_id) %>% distinct(cluster) %>% pull) {
+        
+        # cluster <- ( db_metadata %>% filter(SRA_project == project_id) %>% distinct(cluster) %>% pull)[1]
+        
+        query <- paste0("SELECT * FROM 'sqlite_master' WHERE tbl_name = '", cluster, "_", project_id, "_misspliced' AND name = 'index_", cluster, "_", project_id, "_misspliced'")
+        
+        if ( nrow(dbGetQuery(conn = con, query)) == 0 ) {
+          
+          message("Creating index 'index_", cluster, "_", project_id, "_misspliced'...")
+          query <- paste0("CREATE UNIQUE INDEX 'index_", cluster, "_", project_id, "_misspliced' ON '", cluster, "_", project_id, "_misspliced'(ref_junID,novel_junID)");
+          res <- DBI::dbSendQuery(conn = con, statement = query)
+          DBI::dbClearResult(res)
+          
+        }
+        
+        
+        query <- paste0("SELECT * FROM 'sqlite_master' WHERE tbl_name = '", cluster, "_", project_id, "_nevermisspliced' AND name = 'index_", cluster, "_", project_id, "_nevermisspliced'")
+        
+        if ( nrow(dbGetQuery(conn = con, query)) == 0 ) {
+          
+          message("Creating index 'index_", cluster, "_", project_id, "_nevermisspliced'...")
+          query <- paste0("CREATE UNIQUE INDEX 'index_", cluster, "_", project_id, "_nevermisspliced' ON '", cluster, "_", project_id, "_nevermisspliced'(ref_junID)");
+          res <- DBI::dbSendQuery(conn = con, statement = query)
+          DBI::dbClearResult(res)
+          
+        }
+        
+      }
     }
   }
   
@@ -355,7 +398,7 @@ create_clinvar_database <- function() {
 
 
 
-create_CLIP_database_tables <- function() {
+create_CLIP_database <- function() {
   
   # database_genes <- get_database_genes(database_equivalences$sqlite_file) %>% unlist %>% unname %>% unique %>% sort()
   
@@ -418,12 +461,11 @@ create_CLIP_database_tables <- function() {
 
 
 
-create_hg38_database_table <- function() {
+create_hg38_database <- function() {
+  
   
   MANE <- readRDS(file = "./dependencies/MANE_genes_CLIP_sites.rds")
   hg38_transcripts <- readRDS( file = "./dependencies/hg38_transcripts.111.rds")
-  
-  
   
   
   database_path <- file.path(here::here(), "database/hg38_transcripts.sqlite")
@@ -493,7 +535,7 @@ create_BigWig_URL_list <- function() {
         message(project_id, "...")
         
         if (source == "gtex") {
-          base_URL = "~/PROJECTS/splicing-accuracy-manuscript/results/splicing_1read/111/"
+          base_URL = "~/PROJECTS/recount3-database-project/results/GTEX_1read_subsampleFALSE/111/"
         } else if (source == "sra") {
           base_URL = paste0("~/PROJECTS/recount3-database-project/results/",project_id,"_1read_subsampleFALSE/111/")
           
@@ -601,14 +643,20 @@ create_BigWig_URL_list <- function() {
     ## GET ENCODE BIGWIG FILES
     bigWig_URLs_ENCODE <- map_df(c("crispr", "shRNA"), function(encode_proyect) {
       
+      # encode_proyect = "shRNA"
       # encode_proyect = "crispr"
-      ENCODE_metadata_path = file.path(paste0("~/PROJECTS/splicing-accuracy-manuscript/ENCODE_SR/ENCODE_Splicing_Analysis/metadata/metadata_",encode_proyect,"_samples.tsv"))
+      
+      ENCODE_metadata_path = file.path(paste0("~/PROJECTS/ENCODE_Metadata_Extraction/results/metadata_",
+                                              encode_proyect,"_bigWig_samples.tsv"))
       ENCODE_metadata <- read.delim(file = ENCODE_metadata_path) %>% as_tibble()
       
       map_df(ENCODE_metadata$target_gene %>% unique, function(RBP) {
         
-        message(RBP, "...")
+        
         # RBP = (ENCODE_metadata$target_gene %>% unique)[1]
+        
+        message(RBP, "...")
+        
         data.frame(project = RBP,
                    cluster = ENCODE_metadata %>%
                      filter(target_gene == RBP) %>%
@@ -664,6 +712,7 @@ create_BigWig_URL_list <- function() {
                     overwrite = T)
   
   DBI::dbDisconnect(conn = con)
+  
 }
 
 
@@ -691,6 +740,12 @@ get_transcript_to_plot <- function(junID = NULL,
   # jxn.type = "Novel Acceptor"
   # multiple = F
   
+  # junID = ""
+  # geneName = "SNCA"
+  # transcript.id = ""
+  # jxn.type = "annotated intron"
+  # multiple = T
+  
   message("'get_transcript_to_plot': '", junID, "' '", geneName, "' '", transcript.id, "' '", jxn.type, "' '", multiple)
   
   ## Connect to the 'hg38 transcripts' data database and retrieve data from the current gene/transcript
@@ -713,13 +768,15 @@ get_transcript_to_plot <- function(junID = NULL,
     junction_to_plot <- get_genomic_coordinates(junID) 
     
 
-    if ( jxn.type == "Annotated Intron" ) {
+    if ( str_detect(string = str_to_lower(jxn.type),
+                    pattern = "intron") ) {
       
       db_transcripts_data <- db_transcripts_data %>%
-        filter(transcript_id %in% (ggtranscript::to_intron(db_transcripts_data %>% filter(type == "exon"), "transcript_id") %>%
-                                     mutate(end = end - 1,
+        filter(transcript_id %in% (ggtranscript::to_intron(db_transcripts_data %>% filter(type == "exon"),
+                                                           group_var = "transcript_id") %>%
+                                     mutate(end = end - 1, 
                                             start = start + 1) %>%
-                                     filter(end == junction_to_plot$end |
+                                     filter(end == junction_to_plot$end,
                                             start == junction_to_plot$start) %>%
                                      pull(transcript_id)))
     } else {
@@ -820,8 +877,17 @@ get_exons_to_zoom <- function(jun.type,
                                 min(abs(transcript.to.plot$exons$end - intron.to.zoom$start)))
     
     if (jun.type == "Novel Donor") {
+      
       index_second_exon <- which((abs(transcript.to.plot$exons$start - intron.to.zoom$end) == 
                                     min(abs(transcript.to.plot$exons$start - intron.to.zoom$end)[-index_first_exon])))
+      
+      if ( transcript.to.plot$exons[index_second_exon,]$end < intron.to.zoom$end && 
+           (index_second_exon != transcript.to.plot$exons %>% nrow()) ) {
+        
+        index_second_exon <- which((abs(transcript.to.plot$exons$start - intron.to.zoom$end) == 
+                                      min(abs(transcript.to.plot$exons$start - intron.to.zoom$end)[-c(1:index_first_exon)])))
+      }
+      
     } else {
       index_second_exon <- which((abs(transcript.to.plot$exons$start - intron.to.zoom$end) == 
                                     min(abs(transcript.to.plot$exons$start - intron.to.zoom$end)[-c(1:(index_first_exon))])))
