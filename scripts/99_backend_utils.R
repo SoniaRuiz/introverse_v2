@@ -128,6 +128,7 @@ get_database_clinvar <- function(jxn_info) {
 
 create_indexes_database <- function() {
   
+  
   library(DBI)
   
   ################################
@@ -691,6 +692,56 @@ create_BigWig_URL_list <- function() {
     
     bigWig_URLs <- readRDS(file = file.path(here::here(), "/dependencies/bigWig_URLs.rds"))
   }
+  
+  
+  
+  bigWig_URLs_GTEx_age <- map_df(human_projects[human_projects$file_source == "gtex", ]$project, function(project_id) {
+      
+      # project_id <- human_projects[human_projects$file_source == "gtex", ]$project[1]
+      message(project_id, "...")
+      
+      base_URL = "~/PROJECTS/recount3-database-project/results/GTEX_1read_subsampleFALSE/111/"
+      
+      # https://recount-opendata.s3.amazonaws.com/recount3/release
+      # https://recount-opendata.s3.amazonaws.com/recount3/release/human/data_sources/gtex/base_sums/EL/BLOOD_VESSEL/DY/gtex.base_sums.BLOOD_VESSEL_GTEX-14BMV-1226-SM-5TDDY.1.ALL.bw
+      
+      metadata_path = file.path(base_URL, project_id, "base_data", paste0(project_id, "_age_samples_metadata.rds"))
+      raw_metadata_path = file.path(base_URL, project_id, "base_data", paste0(project_id, "_samples_raw_metadata.rds"))
+      
+      if ( file.exists(metadata_path) && file.exists(raw_metadata_path) ) {
+        
+        metadata_raw <- readRDS(file = raw_metadata_path)%>% 
+          as_tibble() %>%
+          rowwise() %>%
+          mutate(BigWigURL = str_replace_all(string = BigWigURL, 
+                                             pattern = "http://duffel.rail.bio/recount3/", 
+                                             replacement = "https://recount-opendata.s3.amazonaws.com/recount3/release/")) %>%
+          ungroup() %>%
+          dplyr::select(external_id, BigWigURL)
+        metadata_age <- readRDS(file = metadata_path) %>%
+          dplyr::select(sample_id, SRA_project, cluster)
+        
+        
+        metadata_age %>%
+          dplyr::inner_join(y = metadata_raw,
+                            by = c("sample_id" = "external_id")) %>%
+          as_tibble() %>%
+          dplyr::select(project = SRA_project, cluster, BigWigURL) %>%
+          return()
+          
+       
+      } else {
+        return(NULL)
+      }
+
+  })
+  
+  bigWig_URLs_GTEx_age %>%
+    dplyr::group_by(project) %>%
+    dplyr::count(cluster)
+  
+  
+  bigWig_URLs <- plyr::rbind.fill(bigWig_URLs, bigWig_URLs_GTEx_age) %>% as_tibble()
   
   
   ## STORE BIGWIG DATA IN DATABASE
