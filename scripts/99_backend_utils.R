@@ -411,6 +411,7 @@ create_CLIP_database <- function() {
   database_path <- file.path(here::here(), "database/clip_data.sqlite")
   
   con <- DBI::dbConnect(RSQLite::SQLite(), database_path)
+  ## any(DBI::dbListTables(conn = con) == "HNRNPA1")
   
   for (gene_name in database_genes) {
     

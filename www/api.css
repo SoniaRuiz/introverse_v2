@@ -1,6 +1,6 @@
 /* Overflow corresponding to the dropdown elements in the menu */
 
-.shiny-split-layout>div { overflow:visible; };
+.shiny-split-layout>div { overflow:visible; }
 
 /* Size of the popups */
 
@@ -19,7 +19,12 @@
 }
   
   
-div.dt-buttons {
+.navbar-nav li:lastchild{
+  float:right !important;
+  
+}
+  
+.dt-buttons {
   clear: both !important;
 }
 

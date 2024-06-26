@@ -9,6 +9,7 @@
 
 library(shiny)
 library(shinyjs)
+library(bslib)
 
 
 # Common backend scripts
@@ -32,7 +33,7 @@ source("scripts/tab4/01_backend_tab4.R")
 
 
 # Define UI for application that draws a histogram
-ui <- navbarPage("IntroVerse 2.0",
+ui <- shiny::navbarPage(title = "IntroVerse 2.0",
                  
                  inverse=TRUE,
                  id = "introverse_menu",
@@ -52,7 +53,7 @@ ui <- navbarPage("IntroVerse 2.0",
                    tags$script(src = "igv.js")
                  ),
                  
-                 tabPanel(title = "Home",
+                 shiny::tabPanel(title = "Home",
                           value = "home",
                           icon = icon("house"),
                           
@@ -102,7 +103,7 @@ ui <- navbarPage("IntroVerse 2.0",
                             )
                           )
                  ),
-                 tabPanel(title = "Junction Search",
+                 shiny::tabPanel(title = "Junction Search",
                           
                           value="basic_search",
                           
@@ -288,7 +289,7 @@ ui <- navbarPage("IntroVerse 2.0",
                             )
                           )
                           ),
-                 tabPanel(title = "Gene Visualisation",
+                 shiny::tabPanel(title = "Gene Visualisation",
                           value = "gene_search",
                           icon = icon("dna"),
                           
@@ -376,7 +377,7 @@ ui <- navbarPage("IntroVerse 2.0",
                               )
                           )
                           ),
-                 tabPanel(title = "IGV Browser",
+                 shiny::tabPanel(title = "IGV Browser",
                           value = "igv_browser",
                           icon = icon("window-maximize"),
                           fluidPage(
@@ -436,74 +437,193 @@ ui <- navbarPage("IntroVerse 2.0",
                             )
                           )
                  ),
-                 tabPanel("Datasets",
-                          icon = icon("database"),
-                          shinybusy:: use_busy_spinner(
-                            spin_id = "main_spinner_tab2",
-                            spin = "circle",
-                            color = "#0dc5c1",
-                            position = "full-page"
-                          ),
-                          
-                          fluidPage(
+                 
+                 navbarMenu(title = "More",
+                            icon = icon("info"),
                             
-                            navlistPanel(
-                              id = "tab_panel_DB_info",
-                              widths = c(3, 9),
-                              "Datasets included in IntroVerse 2.0:",
-                              
-                              tabPanel(
-                                title = "TCGA",
-                                fluidRow(
-                                  column(width = 12,
-                                         h1("TCGA"),
-                                         h3(strong("The Cancer Genome Atlas Program")),
-                                         p("The Cancer Genome Atlas (TCGA) is a landmark cancer genomics program, molecularly characterized over 20,000 primary cancer and matched normal samples spanning 33 cancer types"),
-                                         plotOutput("tcga_metadata_output_tab2", width = "auto", height = "60vh"),
-                                         
-                                         uiOutput(outputId = "tcga_cancer_types_output_tab2")
-                                  ))),
-                              tabPanel(
-                                title = "GTEx v8",
-                                fluidRow(
-                                  column(width = 12,
-                                         h1("GTEx v8"),
-                                         h3(strong("Genotype Tissue Expression Project v8")),
-                                         p("GTEx v8 project collected samples from up to 54 non-diseased tissue sites across nearly 1,000 deceased individuals. Gene expression of each tissue was assessed by RNA sequencing (bulk RNA-seq)."),
-                                         plotOutput("gtex_metadata_output_tab2", width = "auto", height = "60vh")
-                                  ))),
-                              tabPanel(
-                                title = "GTEx v8 - Age stratification",
-                                fluidRow(
-                                  column(width = 12,
-                                         h1("GTEx v8 - Age stratification"),
-                                         h3(strong("Genotype Tissue Expression Project v8 - Age stratification")),
-                                         p("Samples from the GTEx v8 project were stratified by tissue and age group in three clusters: '20-39', '40-59' and '60-79' years-old."),
-                                         plotOutput("gtex_age_metadata_output_tab2", width = "auto", height = "60vh")
-                                  ))),
-                              tabPanel(
-                                title = "ENCODE shRNA",
-                                
-                                fluidRow(
-                                  column(width = 12,
-                                         h1("ENCODE shRNA"),
-                                         h3(strong("shRNA knockdown followed by RNA-seq and control experiments")),
-                                         p("Bulk short-read RNA-seq on K562 and HepG2 cell lines treated with an shRNA knockdown against different RNA-Binding Proteins (RBPs) as well as against no target gene (controls). BAM files were downloaded from the ENCODE platform."),
-                                         plotOutput("ENCODE_shRNA_metadata_output_tab2", width = "auto", height = "60vh")
-                                  ))),
-                              tabPanel(
-                                title = "ENCODE CRISPR",
-                                
-                                fluidRow(
-                                  column(width = 12,
-                                         h1("ENCODE CRISPR"),
-                                         h3(strong("Homo sapiens K562 and HepG2 genetically modified (deletion) using CRISPR targeting multiple RNA-Binding Proteins (RBPs) and control experiments")),
-                                         p("Bulk short-read RNA-seq on K562 and HepG2 cell lines genetically modified (deletion) using CRISPR against 71 independent RNA-Binding Proteins (RBPs) as well as against no target gene (controls). BAM files were downloaded from the ENCODE platform."),
-                                         plotOutput("ENCODE_crispr_metadata_output_tab2", width = "auto", height = "60vh")
-                                  )))
-                              
-                            ))
-                 )
+                           tabPanel("Datasets",
+                                    icon = icon("database"),
+                                    shinybusy:: use_busy_spinner(
+                                      spin_id = "main_spinner_tab2",
+                                      spin = "circle",
+                                      color = "#0dc5c1",
+                                      position = "full-page"
+                                    ),
+        
+                                    fluidPage(
+        
+                                      navlistPanel(
+                                        id = "tab_panel_DB_info",
+                                        widths = c(3, 9),
+                                        "Datasets included in IntroVerse 2.0:",
+        
+                                        tabPanel(
+                                          title = "TCGA",
+                                          fluidRow(
+                                            column(width = 12,
+                                                   h1("TCGA"),
+                                                   h3(strong("The Cancer Genome Atlas Program")),
+                                                   p("The Cancer Genome Atlas (TCGA) is a landmark cancer genomics program, molecularly characterized over 20,000 primary cancer and matched normal samples spanning 33 cancer types"),
+                                                   plotOutput("tcga_metadata_output_tab2", width = "auto", height = "60vh"),
+        
+                                                   uiOutput(outputId = "tcga_cancer_types_output_tab2")
+                                            ))),
+                                        tabPanel(
+                                          title = "GTEx v8",
+                                          fluidRow(
+                                            column(width = 12,
+                                                   h1("GTEx v8"),
+                                                   h3(strong("Genotype Tissue Expression Project v8")),
+                                                   p("GTEx v8 project collected samples from up to 54 non-diseased tissue sites across nearly 1,000 deceased individuals. Gene expression of each tissue was assessed by RNA sequencing (bulk RNA-seq)."),
+                                                   plotOutput("gtex_metadata_output_tab2", width = "auto", height = "60vh")
+                                            ))),
+                                        tabPanel(
+                                          title = "GTEx v8 - Age stratification",
+                                          fluidRow(
+                                            column(width = 12,
+                                                   h1("GTEx v8 - Age stratification"),
+                                                   h3(strong("Genotype Tissue Expression Project v8 - Age stratification")),
+                                                   p("Samples from the GTEx v8 project were stratified by tissue and age group in three clusters: '20-39', '40-59' and '60-79' years-old."),
+                                                   plotOutput("gtex_age_metadata_output_tab2", width = "auto", height = "60vh")
+                                            ))),
+                                        tabPanel(
+                                          title = "ENCODE shRNA",
+        
+                                          fluidRow(
+                                            column(width = 12,
+                                                   h1("ENCODE shRNA"),
+                                                   h3(strong("shRNA knockdown followed by RNA-seq and control experiments")),
+                                                   p("Bulk short-read RNA-seq on K562 and HepG2 cell lines treated with an shRNA knockdown against different RNA-Binding Proteins (RBPs) as well as against no target gene (controls). BAM files were downloaded from the ENCODE platform."),
+                                                   plotOutput("ENCODE_shRNA_metadata_output_tab2", width = "auto", height = "60vh")
+                                            ))),
+                                        tabPanel(
+                                          title = "ENCODE CRISPR",
+        
+                                          fluidRow(
+                                            column(width = 12,
+                                                   h1("ENCODE CRISPR"),
+                                                   h3(strong("Homo sapiens K562 and HepG2 genetically modified (deletion) using CRISPR targeting multiple RNA-Binding Proteins (RBPs) and control experiments")),
+                                                   p("Bulk short-read RNA-seq on K562 and HepG2 cell lines genetically modified (deletion) using CRISPR against 71 independent RNA-Binding Proteins (RBPs) as well as against no target gene (controls). BAM files were downloaded from the ENCODE platform."),
+                                                   plotOutput("ENCODE_crispr_metadata_output_tab2", width = "auto", height = "60vh")
+                                            )))
+        
+                                      ))
+                           ),
+                         tabPanel(title = "Download",
+                                  value = "download",
+                                  icon = icon(lib = "font-awesome",
+                                              name = "download"),
+                                  shinybusy:: use_busy_spinner(
+                                    spin_id = "download_spinner",
+                                    spin = "circle",
+                                    color = "#0dc5c1",
+                                    position = "full-page"
+                                  ),
+                                  fluidPage(
+      
+                                    navlistPanel(
+      
+                                      "Download",
+                                      tabPanel(
+                                        title = "SQLite file",
+                                        fluidRow(
+                                          column(9,
+                                                 h2("Database Download"),
+      
+                                                 br(),
+                                                 hr(),
+      
+                                                 h4("The Cancer Genome Atlas (TGCA) "),
+                                                 h5("TCGA_1read_subsampleFALSE.sqlite (3.2 GB)"),
+                                                 p("To download this resource, please click the button below:"),
+                                                 downloadButton(outputId = 'downloadTCGASQLite', label = 'Download .sqlite file' ),
+                                                 p(tags$small("(*) Please, note that the download may take a few seconds to start.", style="font-size: smaller")),
+      
+                                                 br(),
+                                                 hr(),
+      
+                                                 h4("The Genotype-Tissue Expression (GTEx) v8 "),
+                                                 h5("GTEX_1read_subsampleFALSE.sqlite (3.4 GB)"),
+                                                 p("To download this resource, please click the button below:"),
+                                                 downloadButton(outputId = 'downloadGTExSQLite', label = 'Download .sqlite file' ),
+                                                 p(tags$small("(*) Please, note that the download may take a few seconds to start.", style="font-size: smaller")),
+      
+                                                 
+                                                 hr(),
+      
+                                                 h4("The Genotype-Tissue Expression (GTEx) v8 - Age Stratification "),
+                                                 h5("GTEX_1read_subsampleFALSE_age.sqlite (2.9 GB)"),
+                                                 p("To download this resource, please click the button below:"),
+                                                 downloadButton(outputId = 'downloadGTExAGESQLite', label = 'Download .sqlite file' ),
+                                                 p(tags$small("(*) Please, note that the download may take a few seconds to start.", style="font-size: smaller")),
+      
+                                                 
+                                                 hr(),
+      
+                                                 h4("The ENCODE shRNA knockdown data "),
+                                                 h5("ENCODE_SR_1read_shRNA.sqlite (1.9 GB)"),
+                                                 p("To download this resource, please click the button below:"),
+                                                 downloadButton(outputId = 'downloadshRNASQLite', label = 'Download .sqlite file' ),
+                                                 p(tags$small("(*) Please, note that the download may take a few seconds to start.", style="font-size: smaller")),
+      
+                                                 
+                                                 hr(),
+      
+                                                 h4("The ENCODE CRISPR knockout data "),
+                                                 h5("ENCODE_SR_1read_crispr.sqlite (1.5 GB)"),
+                                                 p("To download this resource, please click the button below:"),
+                                                 downloadButton(outputId = 'downloadCRISPRSQLite', label = 'Download .sqlite file' ),
+                                                 p(tags$small("(*) Please, note that the download may take a few seconds to start.", style="font-size: smaller")),
+      
+                                                 
+                                                 hr(),
+      
+                                                 h4("The human reference transcriptome hg38 "),
+                                                 h5("hg38_transcripts.sqlite (225 MB)"),
+                                                 p("To download this resource, please click the button below:"),
+                                                 downloadButton(outputId = 'downloadhg38SQLite', label = 'Download .sqlite file' ),
+                                                 p(tags$small("(*) Please, note that the download may take a few seconds to start.", style="font-size: smaller")),
+      
+                                                 
+                                                 hr(),
+      
+                                                 h4("RBP-RNA interactions supported by the binding sites of RBPs derived from CLIP-seq data "),
+                                                 h5("clip_data.sqlite (1.9 GB)"),
+                                                 p("Data originating from:",
+                                                   span("Zhou KR, Liu S, Li B, Liu SR, Zheng WJ, Cai L, et al. An encyclopedia of RNA interactomes in ENCORI"),
+                                                   span("Li JH, et al.starBase v2.0: decoding miRNA-ceRNA, miRNA-ncRNA and protein-RNA interaction networks from large-scale CLIP-Seq data , Nucleic Acids Res. 2014 Jan;42:D92-7.")
+                                                   ),
+                                                 p("To download this resource, please click the button below:"),
+                                                 downloadButton(outputId = 'downloadCLIPSQLite', label = 'Download .sqlite file' ),
+                                                 p(tags$small("(*) Please, note that the download may take a few seconds to start.", style="font-size: smaller")),
+      
+                                                 
+                                                 hr(),
+      
+      
+                                                 h4("ClinVar splicing-altering variants "),
+                                                 h5("clinvar.sqlite (34.8 MB)"),
+                                                 p("To download this resource, please click the button below:"),
+                                                 downloadButton(outputId = 'downloadClinVarSQLite', label = 'Download .sqlite file' ),
+      
+      
+                                                 br(),
+                                                 hr(),
+      
+                                                 h4("List of publicly-available BigWig URLs "),
+                                                 h5("bigwig.sqlite (8.5 MB)"),
+                                                 p("To download this resource, please click the button below:"),
+                                                 downloadButton(outputId = 'downloadBigWigSQLite', label = 'Download .sqlite file' ),
+      
+                                                 br(),
+                                                 hr()
+      
+      
+                                                 ))
+                                        )
+      
+                                    )))
+                         )
 )
 
 # Define server logic required to draw a histogram
@@ -1217,6 +1337,101 @@ server <- function(input, output, session) {
                 fileEncoding = "UTF-8")
     }
   )
+  
+  ###########################################
+  ## DOWNLOAD HANDLERS SQLITEs
+  ###########################################
+ 
+  ## TCGA data
+  output$downloadTCGASQLite <- downloadHandler(
+    filename = "TCGA_1read_subsampleFALSE.sqlite",
+    content = function(file) {
+      shinybusy::show_spinner(spin_id = "download_spinner")
+      on.exit(shinybusy::hide_spinner(spin_id = "download_spinner"))
+      file.copy("/root/introverse_v2/database/TCGA_1read_subsampleFALSE.sqlite", file)
+      
+      
+    })
+  
+  ## GTEx v8 data
+  output$downloadGTExSQLite <- downloadHandler(
+    filename = "GTEX_1read_subsampleFALSE.sqlite",
+    content = function(file) {
+      shinybusy::show_spinner(spin_id = "download_spinner")
+      on.exit(shinybusy::hide_spinner(spin_id = "download_spinner"))
+      file.copy("/root/introverse_v2/database/GTEX_1read_subsampleFALSE.sqlite", file)
+      
+      
+    })
+  
+  ## GTEx v8 ageing data
+  output$downloadGTExAGESQLite <- downloadHandler(
+    filename = "GTEX_1read_subsampleFALSE_age.sqlite",
+    content = function(file) {
+      shinybusy::show_spinner(spin_id = "download_spinner")
+      on.exit(shinybusy::hide_spinner(spin_id = "download_spinner"))
+      file.copy("/root/introverse_v2/database/GTEX_1read_subsampleFALSE_age.sqlite", file)
+      
+      
+    })
+  
+  ## shRNA data
+  output$downloadshRNASQLite <- downloadHandler(
+    filename = "ENCODE_SR_1read_shRNA.sqlite",
+    content = function(file) {
+      shinybusy::show_spinner(spin_id = "download_spinner")
+      on.exit(shinybusy::hide_spinner(spin_id = "download_spinner"))
+      file.copy("/root/introverse_v2/database/ENCODE_SR_1read_shRNA.sqlite", file)
+      
+      
+    })
+  
+  ## CRISPR data
+  output$downloadCRISPRSQLite <- downloadHandler(
+    filename = "ENCODE_SR_1read_crispr.sqlite",
+    content = function(file) {
+      shinybusy::show_spinner(spin_id = "download_spinner")
+      on.exit(shinybusy::hide_spinner(spin_id = "download_spinner"))
+      file.copy("/root/introverse_v2/database/ENCODE_SR_1read_crispr.sqlite", file)
+      
+      
+    })
+  
+  ## CLIP-seq data
+  output$downloadCLIPSQLite <- downloadHandler(
+    filename = "clip_data.sqlite",
+    content = function(file) {
+      shinybusy::show_spinner(spin_id = "download_spinner")
+      on.exit(shinybusy::hide_spinner(spin_id = "download_spinner"))
+      file.copy("/root/introverse_v2/database/clip_data.sqlite", file)
+      
+      
+    })
+  
+  ## ClinVar data
+  output$downloadClinVarSQLite <- downloadHandler(
+    filename = "clinvar.sqlite",
+    content = function(file) {
+      shinybusy::show_spinner(spin_id = "download_spinner")
+      on.exit(shinybusy::hide_spinner(spin_id = "download_spinner"))
+      file.copy("/root/introverse_v2/database/clinvar.sqlite", file)
+      
+      
+    })
+  
+  ## BigWig data
+  output$downloadBigWigSQLite <- downloadHandler(
+    filename = "bigwig.sqlite",
+    content = function(file) {
+      shinybusy::show_spinner(spin_id = "download_spinner")
+      on.exit(shinybusy::hide_spinner(spin_id = "download_spinner"))
+      file.copy("/root/introverse_v2/database/bigwig.sqlite", file)
+      
+      
+    })
+  
+  
+  
   
 }
 
